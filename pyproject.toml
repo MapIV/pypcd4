@@ -1,0 +1,28 @@
+[project]
+name = "pypcd4"
+version = "0.1.0"
+description = "Read and write PCL .pcd files in python"
+authors = [
+    { name = "urasakikeisuke", email = "keisuke.urasaki@map4.jp" }
+]
+dependencies = [
+    "numpy>=1.24.4",
+    "python-lzf>=0.2.4",
+]
+readme = "README.md"
+requires-python = ">= 3.8.2"
+license = { text = "MIT" }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = [
+    "black>=23.7.0",
+    "mypy>=1.5.1",
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
