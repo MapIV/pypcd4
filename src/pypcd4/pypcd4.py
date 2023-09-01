@@ -4,7 +4,7 @@ import re
 import struct
 from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import BinaryIO, Iterable, TextIO
+from typing import BinaryIO, Sequence, TextIO
 
 import lzf
 import numpy as np
@@ -23,6 +23,22 @@ NUMPY_TYPE_TO_PCD_TYPE: dict[
     np.int64: ("I", 8),
     np.float32: ("F", 4),
     np.float64: ("F", 8),
+}
+
+NUMPY_TYPE_TO_PCD_TYPE_FB: dict[
+    np.dtype,
+    tuple[str, int],
+] = {
+    np.dtype("uint8"): ("U", 1),
+    np.dtype("uint16"): ("U", 2),
+    np.dtype("uint32"): ("U", 4),
+    np.dtype("uint64"): ("U", 8),
+    np.dtype("int8"): ("I", 1),
+    np.dtype("int16"): ("I", 2),
+    np.dtype("int32"): ("I", 4),
+    np.dtype("int64"): ("I", 8),
+    np.dtype("float32"): ("F", 4),
+    np.dtype("float64"): ("F", 8),
 }
 
 PCD_TYPE_TO_NUMPY_TYPE: dict[
@@ -45,13 +61,13 @@ PCD_TYPE_TO_NUMPY_TYPE: dict[
 @dataclass()
 class MetaData:
     version: str = "0.7"
-    fields: Iterable[str] | None = None
-    size: Iterable[int] | None = None
-    type: Iterable[str] | None = None
-    count: Iterable[int] | None = None
+    fields: Sequence[str] | None = None
+    size: Sequence[int] | None = None
+    type: Sequence[str] | None = None
+    count: Sequence[int] | None = None
     width: int | None = None
     height: int = 1
-    viewpoint: Iterable[float] = (0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+    viewpoint: Sequence[float] = (0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
     points: int | None = None
     data: str = "binary_compressed"
 
@@ -146,7 +162,10 @@ def _parse_pc_data(fp: TextIO | BinaryIO, metadata: MetaData) -> np.ndarray:
     if metadata.data == "ascii":
         pc_data = np.loadtxt(fp, dtype=dtype, delimiter=" ")
     elif metadata.data == "binary":
-        pc_data = np.frombuffer(fp.read(metadata.points * dtype.itemsize), dtype=dtype)
+        if isinstance((chunk := fp.read(metadata.points * dtype.itemsize)), str):
+            pc_data = np.fromstring(chunk, dtype=dtype)
+        else:
+            pc_data = np.frombuffer(chunk, dtype=dtype)
     elif metadata.data == "binary_compressed" or metadata.data == "binaryscompressed":
         compressed_size, uncompressed_size = struct.unpack(
             "II", fp.read(8)  # <--- struct.calcsize("II")
@@ -175,11 +194,13 @@ def _parse_pc_data(fp: TextIO | BinaryIO, metadata: MetaData) -> np.ndarray:
     return pc_data
 
 
-def _compose_pc_data(points: np.ndarray, metadata: MetaData) -> np.ndarray:
-    return np.rec.fromarrays(
-        [points[:, i] for i in range(len(metadata.fields))],
-        dtype=metadata.build_dtype(),
-    )
+def _compose_pc_data(points: np.ndarray | Sequence[np.ndarray], metadata: MetaData) -> np.ndarray:
+    if isinstance(points, np.ndarray):
+        arrays = [points[:, i] for i in range(len(metadata.fields))]
+    else:
+        arrays = points
+
+    return np.rec.fromarrays(arrays, dtype=metadata.build_dtype())
 
 
 class PointCloud:
@@ -212,24 +233,36 @@ class PointCloud:
 
     @staticmethod
     def from_points(
-        points: np.ndarray,
-        fields: Iterable[str],
-        types: Iterable[type[np.floating | np.integer]],
-        count: Iterable[int] | None = None,
+        points: np.ndarray | Sequence[np.ndarray],
+        fields: Sequence[str],
+        types: Sequence[type[np.floating | np.integer]],
+        count: Sequence[int] | None = None,
     ) -> PointCloud:
+        if not isinstance(points, (np.ndarray, Sequence)):
+            raise TypeError(f"Expected np.ndarray or Sequence, but got {type(points)}")
+
         if count is None:
             count = [1] * len(tuple(fields))
 
-        type = [NUMPY_TYPE_TO_PCD_TYPE[dtype][0] for dtype in types]
-        size = [NUMPY_TYPE_TO_PCD_TYPE[dtype][1] for dtype in types]
+        type_, size = [], []
+        for dtype in types:
+            if dtype in NUMPY_TYPE_TO_PCD_TYPE:
+                t, s = NUMPY_TYPE_TO_PCD_TYPE[dtype]
+            else:
+                t, s = NUMPY_TYPE_TO_PCD_TYPE_FB[dtype]
+
+            type_.append(t)
+            size.append(s)
+
+        num_points = len(points) if isinstance(points, np.ndarray) else len(points[0])
 
         metadata = MetaData(
             fields=fields,
             size=size,
-            type=type,
+            type=type_,
             count=count,
-            width=len(points),
-            points=len(points),
+            width=num_points,
+            points=num_points,
         )
 
         return PointCloud(metadata, _compose_pc_data(points, metadata))
@@ -456,22 +489,19 @@ class PointCloud:
         return np.hstack((r, g, b))
 
     @property
-    def fields(self) -> Iterable[str] | None:
+    def fields(self) -> Sequence[str] | None:
         return self.metadata.fields
 
     @property
-    def type(self) -> Iterable[str] | None:
+    def type(self) -> Sequence[str] | None:
         return self.metadata.type
 
     @property
-    def size(self) -> Iterable[int] | None:
+    def size(self) -> Sequence[int] | None:
         return self.metadata.size
 
-    def numpy(self, fields: Iterable[str] | None = None) -> np.ndarray:
+    def numpy(self, fields: Sequence[str] | None = None) -> np.ndarray:
         """Convert to (N, M) numpy.ndarray points"""
-
-        if self.fields is None:
-            raise ValueError("No fields")
 
         if fields is None:
             fields = self.fields
