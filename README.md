@@ -14,7 +14,6 @@ You can install pypcd4 via pip,
 pip install pypcd4
 ```
 
-
 ## How to use
 #### Import pypcd4
 ```python
@@ -50,19 +49,20 @@ If you cannot find preferred point type in pre-defined conversion methods,
 you can create it easily like,
 
 ```python
-
 fields = ("x", "y", "z", "intensity", "new_field")
 types = (np.float32, np.float32, np.float32, np.float32, np.float64)
 
 pc = PointCloud.from_points(array, fields, types)
 ```
-
 #### Save as .pcd file
 ```python
 pc.save("nice_point_cloud.pcd")
 ```
 
+## License
+The library was rewritten and does not borrow any code from the original [pypcd](https://github.com/dimatura/pypcd) library.
+Since it was heavily inspired by the original author's work, we extend his original BSD 3-Clause License and include his Copyright notice.
 
 ## TODO
-- Supprt ROS message conversion
+- Support ROS message conversion
 - Visualization
