@@ -1,6 +1,6 @@
 [project]
 name = "pypcd4"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Read and write PCL .pcd files in python"
 authors = [
     { name = "urasakikeisuke", email = "keisuke.urasaki@map4.jp" }
@@ -11,10 +11,18 @@ dependencies = [
 ]
 readme = "README.md"
 requires-python = ">= 3.8.2"
-license = { text = "MIT" }
+license = {file = "LICENSE.txt"}
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "mypy",
+    "setuptools-scm",
+    "isort",
+]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [tool.rye]
@@ -22,7 +30,47 @@ managed = true
 dev-dependencies = [
     "black>=23.7.0",
     "mypy>=1.5.1",
+    "setuptools-scm>=7.1.0",
+    "isort>=5.12.0",
+    "pyproject-flake8>=6.0.0.post1",
 ]
+
+[tool.rye.scripts]
+lint = { chain = ["lint:isort", "lint:black", "lint:flake8", "lint:mypy" ] }
+"lint:isort" = "isort src"
+"lint:black" = "black src"
+"lint:flake8" = "pflake8 src"
+"lint:mypy" = "mypy src"
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.hatch]
+version.source = "vcs"
+build.hooks.vcs.version-file = "src/pypcd4/_version.py"
+
+[tool.hatch.version.raw-options]
+local_scheme = "no-local-version"
+
+[tool.setuptools_scm]
+write_to = "src/pypcd4/_version.py"
+version_scheme = "guess-next-dev"
+local_scheme = "node-and-date"
+
+[tool.isort]
+line_length = 100
+profile = "black"
+
+[tool.flake8]
+max-line-length = 100
+max-complexity = 18
+ignore = "E203,E266,W503,"
+
+[tool.black]
+target-version = ["py38", "py39", "py310", "py311"]
+line-length = 100
+
+[tool.mypy]
+no_strict_optional = true
+ignore_missing_imports = true
+check_untyped_defs = true

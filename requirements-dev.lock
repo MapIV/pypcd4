@@ -9,11 +9,20 @@
 -e file:.
 black==23.7.0
 click==8.1.7
+flake8==6.0.0
+isort==5.12.0
+mccabe==0.7.0
 mypy==1.5.1
 mypy-extensions==1.0.0
 numpy==1.25.2
 packaging==23.1
 pathspec==0.11.2
 platformdirs==3.10.0
+pycodestyle==2.10.0
+pyflakes==3.0.1
+pyproject-flake8==6.0.0.post1
 python-lzf==0.2.4
+setuptools-scm==7.1.0
 typing-extensions==4.7.1
+# The following packages are considered to be unsafe in a requirements file:
+setuptools==68.1.2

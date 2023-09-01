@@ -8,3 +8,6 @@ wheels/
 
 # venv
 .venv
+
+# setuptools_scm
+_version.py

@@ -58,9 +58,7 @@ class MetaData:
             if getattr(self, field.name) is None:
                 return False
 
-        if not (
-            len(self.fields) == len(self.size) == len(self.type) == len(self.count)
-        ):
+        if not (len(self.fields) == len(self.size) == len(self.type) == len(self.count)):
             return False
 
         return True
@@ -97,7 +95,7 @@ class MetaData:
             line = line.replace("_", "s", 1)
             line = line.replace("_", "m", 1)
 
-            if match := re.match("(\w+)\s+([\w\s\.]+)", line):
+            if match := re.match(r"(\w+)\s+([\w\s\.]+)", line):
                 key, value = match.group(1).lower(), match.group(2)
 
                 if key == "version":
@@ -164,9 +162,7 @@ def _parse_pc_data(fp: TextIO | BinaryIO, metadata: MetaData) -> np.ndarray:
         for dti in range(len(dtype)):
             dt: np.dtype = dtype[dti]
             bytes = dt.itemsize * metadata.width
-            pc_data[dtype.names[dti]] = np.frombuffer(
-                buffer[offset : (offset + bytes)], dtype=dt
-            )
+            pc_data[dtype.names[dti]] = np.frombuffer(buffer[offset : (offset + bytes)], dtype=dt)
             offset += bytes
     else:
         raise RuntimeError(
@@ -190,9 +186,7 @@ class PointCloud:
         self.pc_data = pc_data
 
         if not self.metadata.validate():
-            raise RuntimeError(
-                f"Got broken metadata. Check if the data is valid. {self.metadata}"
-            )
+            raise RuntimeError(f"Got broken metadata. Check if the data is valid. {self.metadata}")
 
     @staticmethod
     def from_fileobj(fp: TextIO | BinaryIO) -> PointCloud:
@@ -443,9 +437,7 @@ class PointCloud:
 
         rgb = rgb.astype(np.uint32)
 
-        return np.array(
-            (rgb[:, 0] << 16) | (rgb[:, 1] << 8) | (rgb[:, 2] << 0), dtype=np.uint32
-        )
+        return np.array((rgb[:, 0] << 16) | (rgb[:, 1] << 8) | (rgb[:, 2] << 0), dtype=np.uint32)
 
     @staticmethod
     def decode_rgb(rgb: np.ndarray) -> np.ndarray:
