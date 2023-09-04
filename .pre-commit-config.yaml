@@ -22,15 +22,17 @@ repos:
     rev: 23.7.0
     hooks:
       - id: black
-        args: [src/]
+        args: ["src/", "--line-length", "100"]
 
   - repo: https://github.com/pycqa/isort
     rev: 5.12.0
     hooks:
       - id: isort
+        args: ["--profile", "black", "--line-length", "100"]
 
   - repo: https://github.com/pycqa/flake8
     rev: 6.1.0
     hooks:
       - id: flake8
+        args: ["--ignore", "E203,E501,W503"]
         exclude: tests
