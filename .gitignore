@@ -11,3 +11,9 @@ wheels/
 
 # setuptools_scm
 _version.py
+
+# test
+*.pcd
+
+# mypy
+.mypy_cache
