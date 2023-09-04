@@ -9,11 +9,30 @@ dependencies = [
     "numpy>=1.24.4",
     "python-lzf>=0.2.4",
     "pydantic>=2.3.0",
-    "typing_extensions>=4.7.1",
 ]
 readme = "README.md"
 requires-python = ">= 3.8.2"
 license = {file = "LICENSE.txt"}
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: BSD License",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Utilities",
+]
+urls."Release Notes" = "https://github.com/MapIV/pypcd4/releases"
+urls.Source = "https://github.com/MapIV/pypcd4"
+urls.Tracker = "https://github.com/MapIV/pypcd4/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -36,14 +55,17 @@ dev-dependencies = [
     "isort>=5.12.0",
     "pyproject-flake8>=6.0.0.post1",
     "pre-commit>=3.4.0",
+    "pytest>=7.4.1",
+    "tox>=4.11.1",
 ]
 
 [tool.rye.scripts]
-lint = { chain = ["lint:isort", "lint:black", "lint:flake8", "lint:mypy" ] }
+lint = { chain = ["lint:isort", "lint:black", "lint:flake8", "lint:mypy", "lint:tox" ] }
 "lint:isort" = "isort src"
 "lint:black" = "black src"
 "lint:flake8" = "pflake8 src"
 "lint:mypy" = "mypy src"
+"lint:tox" = "tox"
 
 [tool.hatch.metadata]
 allow-direct-references = true
@@ -77,3 +99,19 @@ line-length = 100
 no_strict_optional = true
 ignore_missing_imports = true
 check_untyped_defs = true
+
+[tool.tox]
+legacy_tox_ini = """
+    [tox]
+    min_version = 4.0
+    isolated_build = true
+    env_list =
+        py38
+        py39
+        py310
+        py311
+
+    [testenv]
+    deps = pytest
+    commands = pytest tests -vv
+"""
