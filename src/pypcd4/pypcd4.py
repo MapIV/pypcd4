@@ -3,7 +3,11 @@ from __future__ import annotations
 import re
 import struct
 from pathlib import Path
-from typing import BinaryIO, Self, Sequence, TextIO
+
+try:
+    from typing import BinaryIO, Self, Sequence, TextIO
+except ImportError:
+    from typing_extensions import Self
 
 import lzf
 import numpy as np
