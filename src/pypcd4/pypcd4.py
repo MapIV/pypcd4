@@ -3,20 +3,25 @@ from __future__ import annotations
 import re
 import struct
 from pathlib import Path
-
-try:
-    from typing import BinaryIO, Self, Sequence, TextIO
-except ImportError:
-    from typing_extensions import Self
+from typing import BinaryIO, List, Optional, Sequence, TextIO, Tuple, Type, Union
 
 import lzf
 import numpy as np
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
+
+try:
+    from pydantic import field_validator as validator
+except ImportError:
+    from pydantic import validator  # type: ignore[no-redef] # noqa: F401
+
 from pydantic.dataclasses import dataclass
+
+NpNumberType = Type[Union[np.integer, np.floating]]
+PathLike = Union[str, Path]
 
 NUMPY_TYPE_TO_PCD_TYPE: dict[
     np.dtype,
-    tuple[str, int],
+    Tuple[str, int],
 ] = {
     np.dtype("uint8"): ("U", 1),
     np.dtype("uint16"): ("U", 2),
@@ -31,8 +36,8 @@ NUMPY_TYPE_TO_PCD_TYPE: dict[
 }
 
 PCD_TYPE_TO_NUMPY_TYPE: dict[
-    tuple[str, int],
-    type[np.floating | np.integer],
+    Tuple[str, int],
+    NpNumberType,
 ] = {
     ("F", 4): np.float32,
     ("F", 8): np.float64,
@@ -51,36 +56,36 @@ HEADER_PATTERN = re.compile(r"(\w+)\s+([\w\s\.]+)")
 
 @dataclass
 class MetaData(BaseModel):
-    fields: Sequence[str]
-    size: Sequence[int]
-    type: Sequence[str]
-    count: Sequence[int]
+    fields: Tuple[str, ...]
+    size: Tuple[int, ...]
+    type: Tuple[str, ...]
+    count: Tuple[int, ...]
     points: int
     width: int
     height: int = 1
     version: str = "0.7"
-    viewpoint: Sequence[float] = (0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+    viewpoint: Tuple[float, ...] = (0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
     data: str = "binary_compressed"
 
     @validator("version")
-    def validate_version(cls: Self, value: str) -> str:
-        if value not in ["0.7"]:
+    def validate_version(cls: MetaData, value: str) -> str:
+        if value not in ("0.7", ".7"):
             raise RuntimeError("pypcd4 supports PCD file formats version 0.7 only.")
 
         return value
 
     @validator("points")
-    def validate_points(cls: Self, value: int) -> int:
+    def validate_points(cls: MetaData, value: int) -> int:
         if value <= 0:
             raise RuntimeError(f"Number of points must be greater than zero, but got {value}")
 
         return value
 
     @validator("data")
-    def validate_data(cls: Self, value: str) -> str:
+    def validate_data(cls: MetaData, value: str) -> str:
         value = "binary_compressed" if value == "binaryscompressed" else value
 
-        if value not in ["ascii", "binary", "binary_compressed"]:
+        if value not in ("ascii", "binary", "binary_compressed"):
             raise RuntimeError(
                 f"Got unsupported data type: {value}. As of version 0.7, "
                 "three data types are supported: ascii, binary, and binary_compressed. "
@@ -89,7 +94,7 @@ class MetaData(BaseModel):
         return value
 
     @staticmethod
-    def parse_header(lines: list[str]) -> MetaData:
+    def parse_header(lines: List[str]) -> MetaData:
         """
         Parse a header in accordance with the PCD (Point Cloud Data) file format.
         See https://pointclouds.org/documentation/tutorials/pcd_file_format.html.
@@ -112,16 +117,16 @@ class MetaData(BaseModel):
             elif key in ["width", "height", "points"]:
                 _header[key] = int(value[0])
             elif key in ["fields", "type"]:
-                _header[key] = value
+                _header[key] = tuple(value)
             elif key in ["size", "count"]:
-                _header[key] = [int(v) for v in value]
+                _header[key] = tuple(int(v) for v in value)
             elif key in ["viewpoint"]:
-                _header[key] = [float(v) for v in value]
+                _header[key] = tuple(float(v) for v in value)
 
         return MetaData.model_validate(_header)
 
     def compose_header(self) -> str:
-        header: list[str] = []
+        header: List[str] = []
 
         header.append(f"VERSION {self.version}")
         header.append(f"FIELDS {' '.join(self.fields)}")
@@ -137,8 +142,8 @@ class MetaData(BaseModel):
         return "\n".join(header) + "\n"
 
     def build_dtype(self) -> np.dtype[np.void]:
-        field_names: list[str] = []
-        type_names: list[np.dtype] = []
+        field_names: List[str] = []
+        type_names: List[np.dtype] = []
 
         for i, field in enumerate(self.fields):
             np_type: np.dtype = np.dtype(PCD_TYPE_TO_NUMPY_TYPE[(self.type[i], self.size[i])])
@@ -153,7 +158,7 @@ class MetaData(BaseModel):
         return np.dtype([x for x in zip(field_names, type_names)])
 
 
-def _parse_pc_data(fp: TextIO | BinaryIO, metadata: MetaData) -> np.ndarray:
+def _parse_pc_data(fp: Union[TextIO, BinaryIO], metadata: MetaData) -> np.ndarray:
     dtype = metadata.build_dtype()
 
     if metadata.data == "ascii":
@@ -188,12 +193,10 @@ def _parse_pc_data(fp: TextIO | BinaryIO, metadata: MetaData) -> np.ndarray:
     return pc_data
 
 
-def _compose_pc_data(points: np.ndarray | Sequence[np.ndarray], metadata: MetaData) -> np.ndarray:
-    arrays: Sequence[np.ndarray]
-    if isinstance(points, np.ndarray):
-        arrays = [points[:, i] for i in range(len(metadata.fields))]
-    else:
-        arrays = points
+def _compose_pc_data(
+    points: Union[np.ndarray, Sequence[np.ndarray]], metadata: MetaData
+) -> np.ndarray:
+    arrays: Sequence[np.ndarray] = tuple(points.T) if isinstance(points, np.ndarray) else points
 
     return np.rec.fromarrays(arrays, dtype=metadata.build_dtype())
 
@@ -204,8 +207,8 @@ class PointCloud:
         self.pc_data = pc_data
 
     @staticmethod
-    def from_fileobj(fp: TextIO | BinaryIO) -> PointCloud:
-        lines: list[str] = []
+    def from_fileobj(fp: Union[TextIO, BinaryIO]) -> PointCloud:
+        lines: List[str] = []
         while True:
             line = fp.readline().strip()
             lines.append(line.decode(encoding="utf-8") if isinstance(line, bytes) else line)
@@ -219,36 +222,72 @@ class PointCloud:
         return PointCloud(metadata, pc_data)
 
     @staticmethod
-    def from_path(path: str | Path) -> PointCloud:
+    def from_path(path: Union[str, Path]) -> PointCloud:
         with open(path, mode="rb") as fp:
             return PointCloud.from_fileobj(fp)
 
     @staticmethod
     def from_points(
-        points: np.ndarray | Sequence[np.ndarray],
+        points: Union[np.ndarray, Sequence[np.ndarray]],
         fields: Sequence[str],
-        types: Sequence[type[np.floating | np.integer] | np.dtype],
-        count: Sequence[int] | None = None,
+        types: Sequence[Union[NpNumberType, np.dtype]],
+        count: Optional[Sequence[int]] = None,
     ) -> PointCloud:
+        """Create PointCloud from 2D numpy array or sequence of 1D numpy arrays of each field
+
+        Args:
+            points (Union[np.ndarray, Sequence[np.ndarray]]): Numpy array
+            fields (Sequence[str]): Field names for each numpy array or sequence of numpy arrays
+            types (Sequence[Union[NpNumberType, np.dtype]]): Numpy type for each numpy array or
+                sequence of numpy arrays
+            count (Optional[Sequence[int]], optional): Number of values for each numpy array or
+                sequence of numpy arrays. If None, set to 1 for all fields. Defaults to None.
+
+        Raises:
+            TypeError: Raise if `points` type is neither `np.ndarray` nor `Sequence[np.ndarray]`.
+
+        Returns:
+            PointCloud: PointCloud object
+
+        >>> PointCloud.from_points(
+                np.array([[1, 2, 3], [4, 5, 6]]),
+                ("x", "y", "z"),
+                (np.float32, np.float32, np.float32)
+            )
+        <pypcd4.PointCloud object at 0x7f7c9a3d8b00>
+
+        >>> PointCloud.from_points(
+                [
+                    np.array([1, 2, 3]),
+                    np.array([4, 5, 6])
+                ],
+                ("x", "y", "z"),
+                (np.float32, np.float32, np.float32)
+            )
+        <pypcd4.PointCloud object at 0x7f7c9a3d8b00>
+        """
+
         if not isinstance(points, (np.ndarray, Sequence)):
-            raise TypeError(f"Expected np.ndarray or Sequence, but got {type(points)}")
+            raise TypeError(
+                f"`points` must be a `np.ndarray or `Sequence[np.ndarray]`, but got {type(points)}"
+            )
 
         if count is None:
             count = [1] * len(tuple(fields))
 
-        type_, size = [], []
-        for dtype in types:
-            t, s = NUMPY_TYPE_TO_PCD_TYPE[np.dtype(dtype)]
-            type_.append(t)
-            size.append(s)
+        pcd_types, sizes = [], []
+        for type_ in types:
+            t, s = NUMPY_TYPE_TO_PCD_TYPE[np.dtype(type_)]
+            pcd_types.append(t)
+            sizes.append(s)
 
         num_points = len(points) if isinstance(points, np.ndarray) else len(points[0])
 
         metadata = MetaData.model_validate(
             {
                 "fields": fields,
-                "size": size,
-                "type": type_,
+                "size": sizes,
+                "type": pcd_types,
                 "count": count,
                 "width": num_points,
                 "points": num_points,
@@ -272,9 +311,7 @@ class PointCloud:
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def from_xyzl_points(
-        points: np.ndarray, label_type: type[np.floating | np.integer] = np.float32
-    ) -> PointCloud:
+    def from_xyzl_points(points: np.ndarray, label_type: NpNumberType = np.float32) -> PointCloud:
         fields = ("x", "y", "z", "label")
         types = (np.float32, np.float32, np.float32, label_type)
 
@@ -289,7 +326,7 @@ class PointCloud:
 
     @staticmethod
     def from_xyzrgbl_points(
-        points: np.ndarray, label_type: type[np.floating | np.integer] = np.float32
+        points: np.ndarray, label_type: NpNumberType = np.float32
     ) -> PointCloud:
         fields = ("x", "y", "z", "rgb", "label")
         types = (np.float32, np.float32, np.float32, np.float32, label_type)
@@ -297,9 +334,7 @@ class PointCloud:
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def from_xyzil_points(
-        points: np.ndarray, label_type: type[np.floating | np.integer] = np.float32
-    ) -> PointCloud:
+    def from_xyzil_points(points: np.ndarray, label_type: NpNumberType = np.float32) -> PointCloud:
         fields = ("x", "y", "z", "intensity", "label")
         types = (np.float32, np.float32, np.float32, np.float32, label_type)
 
@@ -314,7 +349,7 @@ class PointCloud:
 
     @staticmethod
     def from_xyzirgbl_points(
-        points: np.ndarray, label_type: type[np.floating | np.integer] = np.float32
+        points: np.ndarray, label_type: NpNumberType = np.float32
     ) -> PointCloud:
         fields = ("x", "y", "z", "intensity", "rgb", "label")
         types = (np.float32, np.float32, np.float32, np.float32, np.float32, label_type)
@@ -481,19 +516,75 @@ class PointCloud:
         return np.hstack((r, g, b))
 
     @property
-    def fields(self) -> Sequence[str]:
+    def fields(self) -> Tuple[str, ...]:
+        """
+        Returns fields of the point cloud
+
+        Returns:
+            Tuple[str, ...]: Tuple of field names for each field
+
+        >>> pc.fields
+        ("x", "y", "z")
+        """
+
         return self.metadata.fields
 
     @property
-    def types(self) -> Sequence[type[np.floating | np.integer]]:
-        return [PCD_TYPE_TO_NUMPY_TYPE[ts] for ts in zip(self.metadata.type, self.metadata.size)]
+    def types(self) -> Tuple[NpNumberType, ...]:
+        """Returns types of the point cloud
+
+        Returns:
+            Tuple[NpNumberType, ...]: Tuple of numpy types for each field
+
+        >>> pc.types
+        (np.float32, np.float32, np.float32)
+        """
+
+        return tuple(
+            PCD_TYPE_TO_NUMPY_TYPE[ts] for ts in zip(self.metadata.type, self.metadata.size)
+        )
 
     @property
-    def count(self) -> int:
+    def points(self) -> int:
+        """Returns number of points in the point cloud
+
+        Returns:
+            int: Tuple of number of points for each field
+
+        >>> pc.points
+        1000
+        """
+
         return self.metadata.points
 
-    def numpy(self, fields: Sequence[str] | None = None) -> np.ndarray:
-        """Convert to (N, M) numpy.ndarray points"""
+    def numpy(self, fields: Optional[Sequence[str]] = None) -> np.ndarray:
+        """Returns numpy array of the point cloud
+
+        Args:
+            fields (Optional[Sequence[str]], optional): Fields to return.
+                If None, all fields are returned. Defaults to None.
+
+        Returns:
+            np.ndarray: Numpy array of the point cloud
+
+        >>> pc.numpy()
+        array([[0.1, 0.2, 0.3],
+               [0.4, 0.5, 0.6],
+               ...,
+               [0.9, 1.0, 1.1]])
+
+        >>> pc.numpy(["x", "y"])
+        array([[0.1, 0.2],
+               [0.4, 0.5],
+               ...,
+               [0.9, 1.0]])
+
+        >>> pc.numpy(["x", "y", "z"])
+        array([[0.1, 0.2, 0.3],
+               [0.4, 0.5, 0.6],
+               ...,
+               [0.9, 1.0, 1.1]])
+        """
 
         if fields is None:
             fields = self.fields
@@ -502,8 +593,17 @@ class PointCloud:
 
         return np.vstack(_stack).T
 
-    def save(self, path: str | Path) -> None:
-        self.metadata.data = "binary_compressed"  # only supports binary_compressed
+    def save(self, path: PathLike) -> None:
+        """Saves point cloud to a file
+
+        Note:
+            Currently only supports binary_compressed format
+
+        Args:
+            path (PathLike): Path to the file
+        """
+
+        self.metadata.data = "binary_compressed"
 
         with open(path, mode="wb") as fp:
             header = self.metadata.compose_header().encode()
