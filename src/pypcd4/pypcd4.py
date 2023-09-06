@@ -2,22 +2,20 @@ from __future__ import annotations
 
 import re
 import struct
+from enum import Enum
 from pathlib import Path
-from typing import BinaryIO, List, Optional, Sequence, TextIO, Tuple, Type, Union
+from typing import BinaryIO, List, Literal, Optional, Sequence, Tuple, Type, Union
 
 import lzf
 import numpy as np
-from pydantic import BaseModel
-
-try:
-    from pydantic import field_validator as validator
-except ImportError:
-    from pydantic import validator  # type: ignore[no-redef] # noqa: F401
-
+from pydantic import BaseModel, NonNegativeInt, PositiveInt
 from pydantic.dataclasses import dataclass
 
 NpNumberType = Type[Union[np.integer, np.floating]]
 PathLike = Union[str, Path]
+
+MetaDataVersion = Literal[".7", "0.7"]
+MetaDataViewPoint = Tuple[float, float, float, float, float, float, float]
 
 NUMPY_TYPE_TO_PCD_TYPE: dict[
     np.dtype,
@@ -51,62 +49,49 @@ PCD_TYPE_TO_NUMPY_TYPE: dict[
     ("I", 8): np.int64,
 }
 
-HEADER_PATTERN = re.compile(r"(\w+)\s+([\w\s\.]+)")
+HEADER_PATTERN = re.compile(r"(\w+)\s+([\w\s\.\-?\d+\.?\d*]+)")
+
+
+class Encoding(str, Enum):
+    ASCII = "ascii"
+    BINARY = "binary"
+    BINARY_COMPRESSED = "binary_compressed"
+    BINARYSCOMPRESSED = "binaryscompressed"
 
 
 @dataclass
 class MetaData(BaseModel):
     fields: Tuple[str, ...]
-    size: Tuple[int, ...]
-    type: Tuple[str, ...]
-    count: Tuple[int, ...]
-    points: int
-    width: int
-    height: int = 1
-    version: str = "0.7"
-    viewpoint: Tuple[float, ...] = (0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
-    data: str = "binary_compressed"
-
-    @validator("version")
-    def validate_version(cls: MetaData, value: str) -> str:
-        if value not in ("0.7", ".7"):
-            raise RuntimeError("pypcd4 supports PCD file formats version 0.7 only.")
-
-        return value
-
-    @validator("points")
-    def validate_points(cls: MetaData, value: int) -> int:
-        if value <= 0:
-            raise RuntimeError(f"Number of points must be greater than zero, but got {value}")
-
-        return value
-
-    @validator("data")
-    def validate_data(cls: MetaData, value: str) -> str:
-        value = "binary_compressed" if value == "binaryscompressed" else value
-
-        if value not in ("ascii", "binary", "binary_compressed"):
-            raise RuntimeError(
-                f"Got unsupported data type: {value}. As of version 0.7, "
-                "three data types are supported: ascii, binary, and binary_compressed. "
-            )
-
-        return value
+    size: Tuple[PositiveInt, ...]
+    type: Tuple[Literal["F", "U", "I"], ...]
+    count: Tuple[PositiveInt, ...]
+    points: NonNegativeInt
+    width: NonNegativeInt
+    height: NonNegativeInt = 1
+    version: MetaDataVersion = "0.7"
+    viewpoint: MetaDataViewPoint = (0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+    data: Encoding = Encoding.BINARY_COMPRESSED
 
     @staticmethod
     def parse_header(lines: List[str]) -> MetaData:
         """
         Parse a header in accordance with the PCD (Point Cloud Data) file format.
         See https://pointclouds.org/documentation/tutorials/pcd_file_format.html.
+
+        Args:
+            lines (List[str]): A list of lines of the header
+
+        Raises:
+            pydantic.ValidationError: If the header is invalid
+
+        Returns:
+            MetaData: Parsed MetaData object
         """
 
         _header = {}
         for line in lines:
             if line.startswith("#") or len(line) < 2:
                 continue
-
-            line = line.replace("_", "s", 1)
-            line = line.replace("_", "m", 1)
 
             if (match := re.match(HEADER_PATTERN, line)) is None:
                 continue
@@ -122,6 +107,8 @@ class MetaData(BaseModel):
                 _header[key] = tuple(int(v) for v in value)
             elif key in ["viewpoint"]:
                 _header[key] = tuple(float(v) for v in value)
+            else:
+                pass
 
         return MetaData.model_validate(_header)
 
@@ -137,7 +124,7 @@ class MetaData(BaseModel):
         header.append(f"HEIGHT {self.height}")
         header.append(f"VIEWPOINT {' '.join([str(v) for v in self.viewpoint])}")
         header.append(f"POINTS {self.points}")
-        header.append(f"DATA {self.data}")
+        header.append(f"DATA {self.data.value}")
 
         return "\n".join(header) + "\n"
 
@@ -158,37 +145,34 @@ class MetaData(BaseModel):
         return np.dtype([x for x in zip(field_names, type_names)])
 
 
-def _parse_pc_data(fp: Union[TextIO, BinaryIO], metadata: MetaData) -> np.ndarray:
+def _parse_pc_data(fp: BinaryIO, metadata: MetaData) -> np.ndarray:
     dtype = metadata.build_dtype()
 
-    if metadata.data == "ascii":
-        pc_data = np.loadtxt(fp, dtype=dtype, delimiter=" ")
-    elif metadata.data == "binary":
-        pc_data = np.frombuffer(
-            fp.read(metadata.points * dtype.itemsize), dtype=dtype  # type: ignore
-        )
-    elif metadata.data == "binary_compressed":
-        compressed_size, uncompressed_size = struct.unpack("II", fp.read(8))  # type: ignore
+    if metadata.points > 0:
+        if metadata.data == Encoding.ASCII:
+            pc_data = np.loadtxt(fp, dtype, delimiter=" ")
+        elif metadata.data == Encoding.BINARY:
+            buffer = fp.read(metadata.points * dtype.itemsize)
+            pc_data = np.frombuffer(buffer, dtype)  # type: ignore
+        else:
+            compressed_size, uncompressed_size = struct.unpack("II", fp.read(8))  # type: ignore
 
-        buffer = lzf.decompress(fp.read(compressed_size), uncompressed_size)
-        if (actual_size := len(buffer)) != uncompressed_size:
-            raise RuntimeError(
-                f"Failed to decompress data. "
-                f"Expected decompressed file size is {uncompressed_size}, but got {actual_size}"
-            )
+            buffer = lzf.decompress(fp.read(compressed_size), uncompressed_size)
+            if (actual_size := len(buffer)) != uncompressed_size:
+                raise RuntimeError(
+                    f"Failed to decompress data. "
+                    f"Expected decompressed file size is {uncompressed_size}, but got {actual_size}"
+                )
 
-        offset = 0
-        pc_data = np.zeros(metadata.width, dtype=dtype)
-        for name in dtype.names:
-            dt: np.dtype = dtype[name]
-            bytes = dt.itemsize * metadata.width
-            pc_data[name] = np.frombuffer(buffer[offset : (offset + bytes)], dtype=dt)
-            offset += bytes
+            offset = 0
+            pc_data = np.zeros(metadata.width, dtype=dtype)
+            for name in dtype.names:
+                dt: np.dtype = dtype[name]
+                bytes = dt.itemsize * metadata.width
+                pc_data[name] = np.frombuffer(buffer[offset : (offset + bytes)], dtype=dt)
+                offset += bytes
     else:
-        raise RuntimeError(
-            f"DATA field is neither 'ascii' or 'binary' or 'binary_compressed', "
-            f"but got {metadata.data}"
-        )
+        pc_data = np.empty((0, len(metadata.fields)), dtype)
 
     return pc_data
 
@@ -207,7 +191,7 @@ class PointCloud:
         self.pc_data = pc_data
 
     @staticmethod
-    def from_fileobj(fp: Union[TextIO, BinaryIO]) -> PointCloud:
+    def from_fileobj(fp: BinaryIO) -> PointCloud:
         lines: List[str] = []
         while True:
             line = fp.readline().strip()
@@ -222,13 +206,28 @@ class PointCloud:
         return PointCloud(metadata, pc_data)
 
     @staticmethod
-    def from_path(path: Union[str, Path]) -> PointCloud:
+    def from_path(path: PathLike) -> PointCloud:
+        """Create PointCloud from file path
+
+        Args:
+            path (PathLike): File path
+
+        Raises:
+            FileNotFoundError: Raise if `path` does not exist.
+
+        Returns:
+            PointCloud: PointCloud object
+
+        >>> PointCloud.from_path("test.pcd")
+        <pypcd4.PointCloud object at 0x7f7c9a3d8b00>
+        """
+
         with open(path, mode="rb") as fp:
             return PointCloud.from_fileobj(fp)
 
     @staticmethod
     def from_points(
-        points: Union[np.ndarray, Sequence[np.ndarray]],
+        points: Union[np.ndarray, List[np.ndarray], Tuple[np.ndarray]],
         fields: Sequence[str],
         types: Sequence[Union[NpNumberType, np.dtype]],
         count: Optional[Sequence[int]] = None,
@@ -267,9 +266,22 @@ class PointCloud:
         <pypcd4.PointCloud object at 0x7f7c9a3d8b00>
         """
 
-        if not isinstance(points, (np.ndarray, Sequence)):
+        if not isinstance(points, (np.ndarray, list, tuple)):
             raise TypeError(
-                f"`points` must be a `np.ndarray or `Sequence[np.ndarray]`, but got {type(points)}"
+                "`points` must be a `np.ndarray`, `List[np.ndarray]` or `Tuple[np.ndarray]` type, "
+                f"but got `{type(points).__name__}` type"
+            )
+
+        if len(fields) != len(types):
+            raise ValueError(
+                f"`fields` and `types` must have the same length, "
+                f"but got {len(fields)} fields and {len(types)} types"
+            )
+
+        num_fields = points.shape[1] if isinstance(points, np.ndarray) else len(points)
+        if num_fields != len(fields):
+            raise ValueError(
+                f"`points` must have {len(fields)} fields {fields}, " f"but got {num_fields} fields"
             )
 
         if count is None:
@@ -498,7 +510,7 @@ class PointCloud:
         rgb_u32 = rgb.astype(np.uint32)
 
         return np.array(
-            (rgb_u32[:, 0] << 16) | (rgb_u32[:, 1] << 8) | (rgb_u32[:, 2] << 0), dtype=np.uint32
+            (rgb_u32[:, 0] << 16) | (rgb_u32[:, 1] << 8) | (rgb_u32[:, 2] << 0), dtype=np.float32
         )
 
     @staticmethod
@@ -508,10 +520,10 @@ class PointCloud:
         Nx3 uint8 array with RGB values
         """
 
-        rgb = rgb.copy().astype(np.uint32)
-        r = np.asarray((rgb >> 16) & 255, dtype=np.uint8)[:, None]
-        g = np.asarray((rgb >> 8) & 255, dtype=np.uint8)[:, None]
-        b = np.asarray(rgb & 255, dtype=np.uint8)[:, None]
+        rgb_u32 = rgb.astype(np.uint32)
+        r = np.asarray((rgb_u32 >> 16) & 255, dtype=np.uint8)
+        g = np.asarray((rgb_u32 >> 8) & 255, dtype=np.uint8)
+        b = np.asarray(rgb_u32 & 255, dtype=np.uint8)
 
         return np.hstack((r, g, b))
 
@@ -567,21 +579,24 @@ class PointCloud:
         Returns:
             np.ndarray: Numpy array of the point cloud
 
+        >>> pc.fields
+        ("x", "y", "z")
+
         >>> pc.numpy()
-        array([[0.1, 0.2, 0.3],
-               [0.4, 0.5, 0.6],
+        array([[0.0, 0.1, 0.2],
+               [0.3, 0.4, 0.5],
                ...,
                [0.9, 1.0, 1.1]])
 
-        >>> pc.numpy(["x", "y"])
-        array([[0.1, 0.2],
-               [0.4, 0.5],
+        >>> pc.numpy(("x", "y"))
+        array([[0.0, 0.1],
+               [0.3, 0.4],
                ...,
                [0.9, 1.0]])
 
-        >>> pc.numpy(["x", "y", "z"])
-        array([[0.1, 0.2, 0.3],
-               [0.4, 0.5, 0.6],
+        >>> pc.numpy(("x", "y", "z"))
+        array([[0.0, 0.1, 0.2],
+               [0.3, 0.4, 0.5],
                ...,
                [0.9, 1.0, 1.1]])
         """
@@ -589,34 +604,80 @@ class PointCloud:
         if fields is None:
             fields = self.fields
 
-        _stack = [self.pc_data[field] for field in self.fields]
+        if len(fields) == 0:
+            return np.empty((0, 0))
+
+        if self.metadata.points == 0:
+            return np.empty((0, len(fields)))
+
+        _stack = tuple(self.pc_data[field] for field in fields)
 
         return np.vstack(_stack).T
 
-    def save(self, path: PathLike) -> None:
-        """Saves point cloud to a file
-
-        Note:
-            Currently only supports binary_compressed format
+    def _save_as_ascii(self, fp: BinaryIO) -> None:
+        """Saves point cloud to a file as a ascii
 
         Args:
             path (PathLike): Path to the file
         """
 
-        self.metadata.data = "binary_compressed"
+        format = []
+        for type, count in zip(self.metadata.type, self.metadata.count):
+            if type == "F":
+                format.extend(["%.10f"] * count)
+            elif type == "I":
+                format.extend(["%d"] * count)
+            else:
+                format.extend(["%u"] * count)
+
+        np.savetxt(fp, self.pc_data, format)
+
+    def _save_as_binary(self, fp: BinaryIO) -> None:
+        """Saves point cloud to a file as a binary
+
+        Args:
+            path (PathLike): Path to the file
+        """
+
+        fp.write(self.pc_data.tobytes())
+
+    def _save_as_binary_compressed(self, fp: BinaryIO) -> None:
+        """Saves point cloud to a file as a binary compressed
+
+        Args:
+            path (PathLike): Path to the file
+        """
+
+        uncompressed = b"".join(
+            np.ascontiguousarray(self.pc_data[field]).tobytes() for field in self.metadata.fields
+        )
+
+        if (compressed := lzf.compress(uncompressed)) is None:
+            compressed = uncompressed
+
+        fp.write(struct.pack("II", len(compressed), len(uncompressed)))
+        fp.write(compressed)
+
+    def save(self, path: PathLike, encoding: Encoding = Encoding.BINARY_COMPRESSED) -> None:
+        """Saves point cloud to a file
+
+        Args:
+            path (PathLike): Path to the file
+            encoding (Encoding, optional): Encoding to use. Defaults to Encoding.BINARY_COMPRESSED.
+        """
+
+        self.metadata.data = encoding
 
         with open(path, mode="wb") as fp:
             header = self.metadata.compose_header().encode()
             fp.write(header)
 
-            uncompresseds = [
-                np.ascontiguousarray(self.pc_data[field]).tobytes()
-                for field in self.pc_data.dtype.names
-            ]
-            uncompressed = b"".join(uncompresseds)
+            if self.metadata.points < 1:
+                return
 
-            if (compressed := lzf.compress(uncompressed)) is None:
-                compressed = uncompressed
-
-            fp.write(struct.pack("II", len(compressed), len(uncompressed)))
-            fp.write(compressed)
+            if encoding == Encoding.ASCII:
+                self._save_as_ascii(fp)
+            elif encoding == Encoding.BINARY:
+                self._save_as_binary(fp)
+            else:
+                self._save_as_binary_compressed(fp)
