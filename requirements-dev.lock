@@ -14,6 +14,7 @@ cfgv==3.4.0
 chardet==5.2.0
 click==8.1.7
 colorama==0.4.6
+coverage==7.3.0
 distlib==0.3.7
 filelock==3.12.3
 flake8==6.0.0
@@ -37,6 +38,7 @@ pyflakes==3.0.1
 pyproject-api==1.6.1
 pyproject-flake8==6.0.0.post1
 pytest==7.4.1
+pytest-cov==4.1.0
 python-lzf==0.2.4
 pyyaml==6.0.1
 setuptools-scm==7.1.0
