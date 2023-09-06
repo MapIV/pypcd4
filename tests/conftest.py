@@ -2,8 +2,6 @@ from pathlib import Path
 
 import pytest
 
-from pypcd4 import PointCloud
-
 
 @pytest.fixture
 def pcd_header():
@@ -102,6 +100,168 @@ def pcd_header_with_empty_lines():
 
 
 @pytest.fixture
+def pcd_header_with_no_points():
+    return [
+        "VERSION .7",
+        "FIELDS x y z",
+        "SIZE 4 4 4",
+        "TYPE F F F",
+        "COUNT 1 1 1",
+        "WIDTH 0",
+        "HEIGHT 0",
+        "VIEWPOINT 0 0 0 1 0 0 0",
+        "POINTS 0",
+        "DATA ascii",
+    ]
+
+
+@pytest.fixture
+def pcd_header_with_multi_count_fields():
+    return [
+        "VERSION .7",
+        "FIELDS x y z",
+        "SIZE 4 4 4",
+        "TYPE F F F",
+        "COUNT 1 1 4",
+        "WIDTH 213",
+        "HEIGHT 1",
+        "VIEWPOINT 0 0 0 1 0 0 0",
+        "POINTS 213",
+        "DATA ascii",
+    ]
+
+
+@pytest.fixture
+def pcd_header_with_negative_viewpoint():
+    return [
+        "VERSION .7",
+        "FIELDS x y z",
+        "SIZE 4 4 4",
+        "TYPE F F F",
+        "COUNT 1 1 1",
+        "WIDTH 213",
+        "HEIGHT 1",
+        "VIEWPOINT 1 -2 3 1 -1 2 -3",
+        "POINTS 213",
+        "DATA ascii",
+    ]
+
+
+@pytest.fixture
+def pcd_header_with_underscore_in_fields():
+    return [
+        "VERSION .7",
+        "FIELDS _ y _",
+        "SIZE 4 4 4",
+        "TYPE F F F",
+        "COUNT 1 1 1",
+        "WIDTH 213",
+        "HEIGHT 1",
+        "VIEWPOINT 0 0 0 1 0 0 0",
+        "POINTS 213",
+        "DATA ascii",
+    ]
+
+
+@pytest.fixture
+def pcd_header_with_extra_items():
+    return [
+        "VERSION .7",
+        "FIELDS x y z",
+        "SIZE 4 4 4",
+        "TYPE F F F",
+        "COUNT 1 1 1",
+        "WIDTH 213",
+        "HEIGHT 1",
+        "VIEWPOINT 0 0 0 1 0 0 0",
+        "POINTS 213",
+        "DATA ascii",
+        "COLUMN a b c",
+        "EXTRA hope do nothing",
+    ]
+
+
+@pytest.fixture
+def pcd_header_with_invalid_version():
+    return [
+        "VERSION 999",
+        "FIELDS x y z",
+        "SIZE 4 4 4",
+        "TYPE F F F",
+        "COUNT 1 1 1",
+        "WIDTH 213",
+        "HEIGHT 1",
+        "VIEWPOINT 0 0 0 1 0 0 0",
+        "POINTS 213",
+        "DATA ascii",
+    ]
+
+
+@pytest.fixture
+def pcd_header_with_invalid_field_type():
+    return [
+        "VERSION .7",
+        "FIELDS x y z",
+        "SIZE 4 4 4",
+        "TYPE U S A",
+        "COUNT 1 1 1",
+        "WIDTH 213",
+        "HEIGHT 1",
+        "VIEWPOINT 0 0 0 1 0 0 0",
+        "POINTS 213",
+        "DATA ascii",
+    ]
+
+
+@pytest.fixture
+def pcd_header_with_invalid_data_type():
+    return [
+        "VERSION .7",
+        "FIELDS x y z",
+        "SIZE 4 4 4",
+        "TYPE F F F",
+        "COUNT 1 1 1",
+        "WIDTH 213",
+        "HEIGHT 1",
+        "VIEWPOINT 0 0 0 1 0 0 0",
+        "POINTS 213",
+        "DATA iicsa",
+    ]
+
+
+@pytest.fixture
+def pcd_header_with_invalid_viewpoint():
+    return [
+        "VERSION .7",
+        "FIELDS x y z",
+        "SIZE 4 4 4",
+        "TYPE F F F",
+        "COUNT 1 1 1",
+        "WIDTH 213",
+        "HEIGHT 1",
+        "VIEWPOINT 0",
+        "POINTS 213",
+        "DATA ascii",
+    ]
+
+
+@pytest.fixture
+def pcd_header_with_negative_points():
+    return [
+        "VERSION .7",
+        "FIELDS x y z",
+        "SIZE 4 4 4",
+        "TYPE F F F",
+        "COUNT 1 1 1",
+        "WIDTH 0",
+        "HEIGHT 0",
+        "VIEWPOINT 0 0 0 1 0 0 0",
+        "POINTS -123",
+        "DATA ascii",
+    ]
+
+
+@pytest.fixture
 def pcd_header_with_missing_items():
     return [
         "VERSION .7",
@@ -118,21 +278,25 @@ def pcd_header_with_missing_items():
 
 
 @pytest.fixture
-def pcd_xyzrgb_ascii():
-    PATH = f"{Path(__file__).resolve().parent}/pcd/ascii.pcd"
-
-    return PointCloud.from_path(PATH)
+def xyzrgb_ascii_path():
+    return f"{Path(__file__).resolve().parent}/pcd/ascii.pcd"
 
 
 @pytest.fixture
-def pcd_xyzrgb_binary():
-    PATH = f"{Path(__file__).resolve().parent}/pcd/binary.pcd"
-
-    return PointCloud.from_path(PATH)
+def xyzrgb_ascii_with_underscore_path():
+    return f"{Path(__file__).resolve().parent}/pcd/ascii_with_underscore.pcd"
 
 
 @pytest.fixture
-def pcd_xyzrgb_binary_compressed():
-    PATH = f"{Path(__file__).resolve().parent}/pcd/binary_compressed.pcd"
+def xyzrgb_ascii_with_empty_points_path():
+    return f"{Path(__file__).resolve().parent}/pcd/ascii_with_empty_points.pcd"
 
-    return PointCloud.from_path(PATH)
+
+@pytest.fixture
+def xyzrgb_binary_path():
+    return f"{Path(__file__).resolve().parent}/pcd/binary.pcd"
+
+
+@pytest.fixture
+def xyzrgb_binary_compressed_path():
+    return f"{Path(__file__).resolve().parent}/pcd/binary_compressed.pcd"
