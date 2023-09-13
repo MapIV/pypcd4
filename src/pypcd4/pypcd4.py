@@ -136,7 +136,7 @@ class MetaData(BaseModel):
             np_type: np.dtype = np.dtype(PCD_TYPE_TO_NUMPY_TYPE[(self.type[i], self.size[i])])
 
             if (count := self.count[i]) == 1:
-                field_names.append(self.fields[i])
+                field_names.append(field)
                 type_names.append(np_type)
             else:
                 field_names.extend([f"{field}_{i:04d}" for i in range(count)])
@@ -649,7 +649,8 @@ class PointCloud:
         """
 
         uncompressed = b"".join(
-            np.ascontiguousarray(self.pc_data[field]).tobytes() for field in self.metadata.fields
+            np.ascontiguousarray(self.pc_data[field]).tobytes()
+            for field in self.pc_data.dtype.names
         )
 
         if (compressed := lzf.compress(uncompressed)) is None:
@@ -658,7 +659,7 @@ class PointCloud:
         fp.write(struct.pack("II", len(compressed), len(uncompressed)))
         fp.write(compressed)
 
-    def save(self, path: PathLike, encoding: Encoding = Encoding.BINARY_COMPRESSED) -> None:
+    def save(self, path: PathLike, encoding: Encoding = Encoding.BINARY) -> None:
         """Saves point cloud to a file
 
         Args:
