@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import random
 import re
+import string
 import struct
 from enum import Enum
 from pathlib import Path
@@ -101,7 +103,17 @@ class MetaData(BaseModel):
                 _header[key] = value[0]
             elif key in ["width", "height", "points"]:
                 _header[key] = int(value[0])
-            elif key in ["fields", "type"]:
+            elif key in ["fields"]:
+                _header[key] = tuple(
+                    [
+                        "#$%&~~"
+                        + "".join(random.choices(string.ascii_letters + string.digits, k=6))
+                        if s == "_"
+                        else s
+                        for s in value
+                    ]
+                )
+            elif key in ["type"]:
                 _header[key] = tuple(value)
             elif key in ["size", "count"]:
                 _header[key] = tuple(int(v) for v in value)
@@ -116,7 +128,9 @@ class MetaData(BaseModel):
         header: List[str] = []
 
         header.append(f"VERSION {self.version}")
-        header.append(f"FIELDS {' '.join(self.fields)}")
+        header.append(
+            f"FIELDS {' '.join(['_' if s.startswith('#$%&~~') else s for s in self.fields])}"
+        )
         header.append(f"SIZE {' '.join([str(v) for v in self.size])}")
         header.append(f"TYPE {' '.join(self.type)}")
         header.append(f"COUNT {' '.join([str(v) for v in self.count])}")

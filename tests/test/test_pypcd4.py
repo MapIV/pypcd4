@@ -132,7 +132,7 @@ def test_parse_pcd_header_with_underscore_in_fields(pcd_header_with_underscore_i
     metadata = MetaData.parse_header(pcd_header_with_underscore_in_fields)
 
     assert metadata.version == ".7"
-    assert metadata.fields == ("_", "y", "_")
+    assert metadata.fields != ("_", "y", "_")
     assert metadata.size == (4, 4, 4)
     assert metadata.type == ("F", "F", "F")
     assert metadata.count == (1, 1, 1)
