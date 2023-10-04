@@ -13,6 +13,8 @@ import numpy as np
 from pydantic import BaseModel, NonNegativeInt, PositiveInt
 from pydantic.dataclasses import dataclass
 
+from .pointcloud2 import PFTYPE_TO_NPTYPE, PointCloud2, pointcloud2_to_array
+
 NpNumberType = Type[Union[np.integer, np.floating]]
 PathLike = Union[str, Path]
 
@@ -513,6 +515,14 @@ class PointCloud:
         )
 
         return PointCloud.from_points(points, fields, types)
+
+    @staticmethod
+    def from_msg(msg: PointCloud2) -> PointCloud:
+        points = pointcloud2_to_array(msg)
+        fields = [f.name for f in msg.fields]
+        types = [PFTYPE_TO_NPTYPE[f.datatype] for f in msg.fields]
+
+        return PointCloud.from_points(points, fields, types)  # type: ignore
 
     @staticmethod
     def encode_rgb(rgb: np.ndarray | list[np.ndarray]) -> np.ndarray:

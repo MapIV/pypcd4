@@ -51,6 +51,18 @@ pc = PointCloud.from_xyzi_points(array)
 pc = PointCloud.from_xyzl_points(array, label_type=np.uint32)
 ```
 
+### ROS PointCloud2 Message -> PointCloud
+
+Added in v0.4.0
+
+```python
+def callback(msg):
+    pc = PointCloud.from_msg(msg)
+
+    pc.fields
+    # ("x", "y", "z", "intensity", "ring", "time")
+```
+
 ### Create custom conversion method
 
 If you cannot find preferred point type in pre-defined conversion methods,
