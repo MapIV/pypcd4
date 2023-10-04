@@ -515,17 +515,25 @@ class PointCloud:
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def encode_rgb(rgb: np.ndarray) -> np.ndarray:
+    def encode_rgb(rgb: np.ndarray | list[np.ndarray]) -> np.ndarray:
         """
         Encode Nx3 uint8 array with RGB values to
         Nx1 float32 array with bit-packed RGB
         """
 
-        rgb_u32 = rgb.astype(np.uint32)
+        if isinstance(rgb, np.ndarray):
+            if rgb.ndim == 1:
+                rgb = rgb[:, None]
+        else:
+            rgb = np.hstack([v[:, None] if v.ndim == 1 else v for v in rgb])
 
-        return np.array(
-            (rgb_u32[:, 0] << 16) | (rgb_u32[:, 1] << 8) | (rgb_u32[:, 2] << 0), dtype=np.float32
+        rgb_u32 = rgb.astype(np.uint32)
+        rgb_u32 = np.array(
+            (rgb_u32[:, 0] << 16) | (rgb_u32[:, 1] << 8) | (rgb_u32[:, 2] << 0), dtype=np.uint32
         )
+        rgb_u32.dtype = np.float32  # type: ignore
+
+        return rgb_u32
 
     @staticmethod
     def decode_rgb(rgb: np.ndarray) -> np.ndarray:

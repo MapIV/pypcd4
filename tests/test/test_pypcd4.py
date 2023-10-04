@@ -575,12 +575,14 @@ def test_from_invalid_points():
 
 
 def test_encode_rgb():
-    r = 249
-    g = 230
-    b = 206
+    r = np.array([249, 249, 249])
+    g = np.array([230, 230, 230])
+    b = np.array([206, 206, 206])
 
-    expect = np.array((r << 16) | (g << 8) | (b << 0))
-    output = PointCloud.encode_rgb(np.hstack((r, g, b)).reshape((-1, 3)))
+    expect = np.array((r << 16) | (g << 8) | (b << 0), np.uint32)
+    expect.dtype = np.float32
+
+    output = PointCloud.encode_rgb((r, g, b))
 
     assert np.allclose(output, expect)
 
