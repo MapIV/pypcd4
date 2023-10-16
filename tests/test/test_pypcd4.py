@@ -588,14 +588,15 @@ def test_encode_rgb():
 
 
 def test_decode_rgb():
-    r = 249
-    g = 230
-    b = 206
+    r = np.array([249, 249, 249])
+    g = np.array([230, 230, 230])
+    b = np.array([206, 206, 206])
 
-    expect = np.array([[r, g, b], [r, g, b]])
-    output = PointCloud.decode_rgb(
-        np.array([[(r << 16) | (g << 8) | (b << 0)], [(r << 16) | (g << 8) | (b << 0)]])
-    )
+    input = np.array((r << 16) | (g << 8) | (b << 0), np.uint32)
+    input.dtype = np.float32
+
+    expect = np.array([r, g, b])
+    output = PointCloud.decode_rgb(input)
 
     assert np.allclose(output, expect)
 

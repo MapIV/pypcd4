@@ -552,12 +552,14 @@ class PointCloud:
         Nx3 uint8 array with RGB values
         """
 
-        rgb_u32 = rgb.astype(np.uint32)
-        r = np.asarray((rgb_u32 >> 16) & 255, dtype=np.uint8)
-        g = np.asarray((rgb_u32 >> 8) & 255, dtype=np.uint8)
-        b = np.asarray(rgb_u32 & 255, dtype=np.uint8)
+        rgb = rgb.copy()
+        rgb.dtype = np.uint32  # type: ignore
 
-        return np.hstack((r, g, b))
+        r = np.asarray((rgb >> 16) & 255, dtype=np.uint8)
+        g = np.asarray((rgb >> 8) & 255, dtype=np.uint8)
+        b = np.asarray(rgb & 255, dtype=np.uint8)
+
+        return np.hstack((r, g, b)).reshape(-1, 3)
 
     @property
     def fields(self) -> Tuple[str, ...]:
