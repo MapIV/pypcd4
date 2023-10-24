@@ -555,9 +555,9 @@ class PointCloud:
         rgb = rgb.copy()
         rgb.dtype = np.uint32  # type: ignore
 
-        r = np.asarray((rgb >> 16) & 255, dtype=np.uint8)
-        g = np.asarray((rgb >> 8) & 255, dtype=np.uint8)
-        b = np.asarray(rgb & 255, dtype=np.uint8)
+        r = np.asarray((rgb >> 16) & 255, dtype=np.uint8).reshape(-1, 1)
+        g = np.asarray((rgb >> 8) & 255, dtype=np.uint8).reshape(-1, 1)
+        b = np.asarray(rgb & 255, dtype=np.uint8).reshape(-1, 1)
 
         return np.hstack((r, g, b)).reshape(-1, 3)
 
