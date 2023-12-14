@@ -595,10 +595,10 @@ def test_decode_rgb():
     input = np.array((r << 16) | (g << 8) | (b << 0), np.uint32)
     input.dtype = np.float32
 
-    expect = np.array([r, g, b])
+    expect = np.array([r, g, b], dtype=np.uint8)
     output = PointCloud.decode_rgb(input)
 
-    assert np.allclose(output, expect)
+    assert np.allclose(output, expect.T)
 
 
 def test_numpy():
