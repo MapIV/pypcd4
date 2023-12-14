@@ -7,9 +7,9 @@
 #   all-features: false
 
 -e file:.
-annotated-types==0.5.0
-numpy==1.24.4
-pydantic==2.3.0
-pydantic-core==2.6.3
+annotated-types==0.6.0
+numpy==1.26.2
+pydantic==2.5.2
+pydantic-core==2.14.5
 python-lzf==0.2.4
-typing-extensions==4.7.1
+typing-extensions==4.9.0

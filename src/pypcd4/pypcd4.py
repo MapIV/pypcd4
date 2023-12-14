@@ -11,7 +11,6 @@ from typing import BinaryIO, List, Literal, Optional, Sequence, Tuple, Type, Uni
 import lzf
 import numpy as np
 from pydantic import BaseModel, NonNegativeInt, PositiveInt
-from pydantic.dataclasses import dataclass
 
 from .pointcloud2 import PFTYPE_TO_NPTYPE, PointCloud2, pointcloud2_to_array
 
@@ -63,7 +62,6 @@ class Encoding(str, Enum):
     BINARYSCOMPRESSED = "binaryscompressed"
 
 
-@dataclass
 class MetaData(BaseModel):
     fields: Tuple[str, ...]
     size: Tuple[PositiveInt, ...]
@@ -123,8 +121,12 @@ class MetaData(BaseModel):
                 _header[key] = tuple(float(v) for v in value)
             else:
                 pass
+        try:
+            metadata = MetaData.model_validate(_header)  # type: ignore[attr-defined]
+        except AttributeError:
+            metadata = MetaData.parse_obj(_header)  # type: ignore[attr-defined]
 
-        return MetaData.model_validate(_header)
+        return metadata
 
     def compose_header(self) -> str:
         header: List[str] = []
@@ -311,16 +313,32 @@ class PointCloud:
 
         num_points = len(points) if isinstance(points, np.ndarray) else len(points[0])
 
-        metadata = MetaData.model_validate(
-            {
-                "fields": fields,
-                "size": sizes,
-                "type": pcd_types,
-                "count": count,
-                "width": num_points,
-                "points": num_points,
-            }
-        )
+        try:
+            metadata = MetaData.model_validate(  # type: ignore[attr-defined]
+                {
+                    "fields": fields,
+                    "size": sizes,
+                    "type": pcd_types,
+                    "count": count,
+                    "width": num_points,
+                    "points": num_points,
+                }
+            )
+        except AttributeError:
+            metadata = MetaData.parse_obj(  # type: ignore[attr-defined]
+                {
+                    "fields": fields,
+                    "size": sizes,
+                    "type": pcd_types,
+                    "count": count,
+                    "width": num_points,
+                    "points": num_points,
+                    "height": 1,
+                    "version": "0.7",
+                    "viewpoint": (0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0),
+                    "data": Encoding.BINARY_COMPRESSED,
+                }
+            )
 
         return PointCloud(metadata, _compose_pc_data(points, metadata))
 
@@ -539,7 +557,8 @@ class PointCloud:
 
         rgb_u32 = rgb.astype(np.uint32)
         rgb_u32 = np.array(
-            (rgb_u32[:, 0] << 16) | (rgb_u32[:, 1] << 8) | (rgb_u32[:, 2] << 0), dtype=np.uint32
+            (rgb_u32[:, 0] << 16) | (rgb_u32[:, 1] << 8) | (rgb_u32[:, 2] << 0),
+            dtype=np.uint32,
         )
         rgb_u32.dtype = np.float32  # type: ignore
 

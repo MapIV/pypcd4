@@ -2,45 +2,38 @@
 name = "pypcd4"
 dynamic = ["version"]
 description = "Read and write PCL .pcd files in python"
-authors = [
-    { name = "urasakikeisuke", email = "keisuke.urasaki@map4.jp" }
-]
+authors = [{ name = "urasakikeisuke", email = "keisuke.urasaki@map4.jp" }]
 dependencies = [
     "numpy>=1.21.0",
     "python-lzf>=0.2.4",
-    "pydantic>=2.3.0",
+    "pydantic >=1.10.8, <=2.5.2",
 ]
 readme = "README.md"
 requires-python = ">= 3.8.2"
-license = {file = "LICENSE.txt"}
+license = { file = "LICENSE.txt" }
 classifiers = [
-  "Development Status :: 4 - Beta",
-  "Intended Audience :: Developers",
-  "License :: OSI Approved :: BSD License",
-  "Operating System :: MacOS :: MacOS X",
-  "Operating System :: Microsoft :: Windows",
-  "Operating System :: POSIX",
-  "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: Implementation :: CPython",
-  "Topic :: Scientific/Engineering",
-  "Topic :: Software Development :: Libraries",
-  "Topic :: Utilities",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Utilities",
 ]
 urls."Release Notes" = "https://github.com/MapIV/pypcd4/releases"
 urls.Source = "https://github.com/MapIV/pypcd4"
 urls.Tracker = "https://github.com/MapIV/pypcd4/issues"
 
 [project.optional-dependencies]
-dev = [
-    "black",
-    "mypy",
-    "setuptools-scm",
-    "isort",
-]
+dev = ["black", "mypy", "setuptools-scm", "isort"]
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
@@ -61,7 +54,13 @@ dev-dependencies = [
 ]
 
 [tool.rye.scripts]
-lint = { chain = ["lint:isort", "lint:black", "lint:flake8", "lint:mypy", "lint:tox" ] }
+lint = { chain = [
+    "lint:isort",
+    "lint:black",
+    "lint:flake8",
+    "lint:mypy",
+    "lint:tox",
+] }
 "lint:isort" = "isort src"
 "lint:black" = "black src"
 "lint:flake8" = "pflake8 src"
