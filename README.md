@@ -89,4 +89,6 @@ Since it was heavily inspired by the original author's work, we extend his origi
 ## TODO
 
 - [ ] Support ROS message conversion
+  - [x] ROS message -> PointCloud
+  - [ ] PointCloud  -> ROS message
 - [ ] Visualization
