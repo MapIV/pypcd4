@@ -1,3 +1,4 @@
+from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -694,3 +695,42 @@ def test_save_with_empty_points():
         assert pc2.fields == pc.fields
         assert pc2.types == pc.types
         assert pc2.points == pc.points
+
+
+def test_save_to_file_buffer():
+    in_points = np.random.randint(0, 1000, (100, 3))
+    fields = ("x", "y", "z")
+    types = (np.float32, np.int8, np.uint64)
+    pc = PointCloud.from_points(in_points, fields, types)
+
+    with TemporaryDirectory() as dirname:
+        path = dirname / Path("test.pcd")
+
+        with path.open("wb") as fp:
+            pc.save(fp, Encoding.BINARY)
+        assert path.is_file()
+
+        pc2 = PointCloud.from_path(path)
+        assert np.allclose(pc2.numpy(), pc.numpy())
+        assert pc2.fields == pc.fields
+        assert pc2.types == pc.types
+        assert pc2.points == pc.points
+        assert pc2.metadata.data == pc.metadata.data
+
+
+def test_save_to_bytes_io():
+    in_points = np.random.randint(0, 1000, (100, 3))
+    fields = ("x", "y", "z")
+    types = (np.float32, np.int8, np.uint64)
+    pc = PointCloud.from_points(in_points, fields, types)
+
+    buffer = BytesIO()
+    pc.save(buffer, Encoding.BINARY)
+    buffer.seek(0)
+
+    pc2 = PointCloud.from_fileobj(buffer)
+    assert np.allclose(pc2.numpy(), pc.numpy())
+    assert pc2.fields == pc.fields
+    assert pc2.types == pc.types
+    assert pc2.points == pc.points
+    assert pc2.metadata.data == pc.metadata.data
