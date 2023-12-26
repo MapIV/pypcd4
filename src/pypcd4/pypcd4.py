@@ -671,7 +671,7 @@ class PointCloud:
         """Saves point cloud to a file as a ascii
 
         Args:
-            path (PathLike): Path to the file
+            fp (BinaryIO): io buffer.
         """
 
         format = []
@@ -698,7 +698,7 @@ class PointCloud:
         """Saves point cloud to a file as a binary compressed
 
         Args:
-            path (PathLike): Path to the file
+            fp (BinaryIO): io buffer.
         """
 
         uncompressed = b"".join(
@@ -712,17 +712,25 @@ class PointCloud:
         fp.write(struct.pack("II", len(compressed), len(uncompressed)))
         fp.write(compressed)
 
-    def save(self, path: PathLike, encoding: Encoding = Encoding.BINARY) -> None:
+    def save(self, fp: Union[PathLike, BinaryIO], encoding: Encoding = Encoding.BINARY) -> None:
         """Saves point cloud to a file
 
         Args:
-            path (PathLike): Path to the file
+            fp (Union[PathLike, BinaryIO]): Path to the file or io buffer.
             encoding (Encoding, optional): Encoding to use. Defaults to Encoding.BINARY_COMPRESSED.
         """
 
         self.metadata.data = encoding
 
-        with open(path, mode="wb") as fp:
+        is_open = False
+        if isinstance(fp, Path):
+            fp = fp.open("wb")
+            is_open = True
+        elif isinstance(fp, str):
+            fp = open(fp, mode="wb")
+            is_open = True
+
+        try:
             header = self.metadata.compose_header().encode()
             fp.write(header)
 
@@ -735,3 +743,6 @@ class PointCloud:
                 self._save_as_binary(fp)
             else:
                 self._save_as_binary_compressed(fp)
+        finally:
+            if is_open:
+                fp.close()
