@@ -221,6 +221,8 @@ class PointCloud:
         metadata = MetaData.parse_header(lines)
         pc_data = _parse_pc_data(fp, metadata)
 
+        fp.seek(0)
+
         return PointCloud(metadata, pc_data)
 
     @staticmethod
