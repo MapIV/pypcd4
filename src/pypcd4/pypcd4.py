@@ -668,6 +668,26 @@ class PointCloud:
         _stack = tuple(self.pc_data[field] for field in fields)
 
         return np.vstack(_stack).T
+    
+    def concatenate(self, other: PointCloud) -> PointCloud:
+        """
+        Concatenates two point clouds together
+        """
+        return self.__add__(other)
+
+    def __add__(self, other: PointCloud) -> PointCloud:
+        """
+        Concatenates two point clouds together
+        """
+
+        if self.metadata.fields != other.metadata.fields:
+            raise ValueError("Can't concatenate point clouds with different fields")
+        if self.metadata.type != other.metadata.type:
+            raise ValueError("Can't concatenate point clouds with different metadata")
+        concatenated_pc = PointCloud(self.metadata, np.hstack([self.pc_data, other.pc_data]))
+        concatenated_pc.metadata.points += other.metadata.points
+        concatenated_pc.metadata.width += other.metadata.width
+        return concatenated_pc
 
     def _save_as_ascii(self, fp: BinaryIO) -> None:
         """Saves point cloud to a file as a ascii
@@ -702,7 +722,7 @@ class PointCloud:
         Args:
             fp (BinaryIO): io buffer.
         """
-
+ 
         uncompressed = b"".join(
             np.ascontiguousarray(self.pc_data[field]).tobytes()
             for field in self.pc_data.dtype.names

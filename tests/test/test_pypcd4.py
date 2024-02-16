@@ -734,3 +734,33 @@ def test_save_to_bytes_io():
     assert pc2.types == pc.types
     assert pc2.points == pc.points
     assert pc2.metadata.data == pc.metadata.data
+
+def test_pointcloud_concatenation():
+    in_points = np.random.randint(0, 1000, (100, 3))
+    fields = ("x", "y", "z")
+    types = (np.float32, np.int8, np.uint64)
+    pc = PointCloud.from_points(in_points, fields, types)
+
+    # Can concatenate PointCloud
+    in_points = np.random.randint(0, 1000, (100, 3))
+    pc2 = PointCloud.from_points(in_points, fields, types)
+    pc3 = pc + pc2
+    assert pc3.points == 200
+    assert len(pc3.pc_data) == 200
+    assert len(pc3.pc_data.dtype) == 3
+    assert pc3.fields == pc.fields
+    assert pc3.types == pc.types
+    assert pc3.metadata.data == pc.metadata.data
+    assert np.allclose(pc3.numpy(), np.concatenate((pc.numpy(), pc2.numpy()), axis=0))
+
+    # Cannot concatenate fields are different
+    pc4 = PointCloud.from_points(in_points, ("x", "y", "zz"), types)
+    with pytest.raises(ValueError):
+        pc + pc4
+
+    # Cannot concatenate because types are different
+    pc5 = PointCloud.from_points(in_points, fields, (np.float32, np.int8, np.float32))
+    with pytest.raises(ValueError):
+        pc + pc5
+
+
