@@ -668,7 +668,7 @@ class PointCloud:
         _stack = tuple(self.pc_data[field] for field in fields)
 
         return np.vstack(_stack).T
-    
+
     def concatenate(self, other: PointCloud) -> PointCloud:
         """
         Concatenates two point clouds together
@@ -722,7 +722,7 @@ class PointCloud:
         Args:
             fp (BinaryIO): io buffer.
         """
- 
+
         uncompressed = b"".join(
             np.ascontiguousarray(self.pc_data[field]).tobytes()
             for field in self.pc_data.dtype.names
