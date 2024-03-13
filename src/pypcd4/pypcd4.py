@@ -612,11 +612,24 @@ class PointCloud:
         )
 
     @property
+    def count(self) -> Tuple[PositiveInt, ...]:
+        """Returns number of elements in each field
+
+        Returns:
+            Tuple[PositiveInt, ...]: Tuple of number of elements in each field
+
+        >>> pc.counts
+        (1, 1, 1)
+        """
+
+        return self.metadata.count
+
+    @property
     def points(self) -> int:
         """Returns number of points in the point cloud
 
         Returns:
-            int: Tuple of number of points for each field
+            int: The number of points
 
         >>> pc.points
         1000

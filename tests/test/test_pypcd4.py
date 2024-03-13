@@ -268,6 +268,7 @@ def test_from_points():
     assert pc.fields == fields
     assert pc.types == types
     assert pc.points == 2
+    assert pc.count == count
     assert pc.pc_data.dtype.names == fields
 
     assert np.array_equal(pc.pc_data["x"], array.T[0])
@@ -735,6 +736,7 @@ def test_save_to_bytes_io():
     assert pc2.points == pc.points
     assert pc2.metadata.data == pc.metadata.data
 
+
 def test_pointcloud_concatenation():
     in_points = np.random.randint(0, 1000, (100, 3))
     fields = ("x", "y", "z")
@@ -762,5 +764,3 @@ def test_pointcloud_concatenation():
     pc5 = PointCloud.from_points(in_points, fields, (np.float32, np.int8, np.float32))
     with pytest.raises(ValueError):
         pc + pc5
-
-
