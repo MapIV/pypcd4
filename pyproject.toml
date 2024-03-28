@@ -23,6 +23,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: Implementation :: CPython",
     "Topic :: Scientific/Engineering",
     "Topic :: Software Development :: Libraries",
@@ -33,7 +34,7 @@ urls.Source = "https://github.com/MapIV/pypcd4"
 urls.Tracker = "https://github.com/MapIV/pypcd4/issues"
 
 [project.optional-dependencies]
-dev = ["black", "mypy", "setuptools-scm", "isort"]
+dev = ["ruff", "mypy", "setuptools-scm"]
 
 [build-system]
 requires = ["hatchling", "hatch-vcs"]
@@ -42,29 +43,25 @@ build-backend = "hatchling.build"
 [tool.rye]
 managed = true
 dev-dependencies = [
-    "black>=23.7.0",
     "mypy>=1.5.1",
     "setuptools-scm>=7.1.0",
-    "isort>=5.12.0",
-    "pyproject-flake8>=6.0.0.post1",
     "pre-commit>=3.4.0",
     "pytest>=7.4.1",
     "tox>=4.11.1",
     "pytest-cov>=4.1.0",
+    "ruff>=0.3.4",
 ]
 
 [tool.rye.scripts]
 lint = { chain = [
-    "lint:isort",
-    "lint:black",
-    "lint:flake8",
+    "lint:ruff-lint",
+    "lint:ruff-format",
     "lint:mypy",
     "lint:tox",
 ] }
-"lint:isort" = "isort src"
-"lint:black" = "black src"
-"lint:flake8" = "pflake8 src"
-"lint:mypy" = "mypy src"
+"lint:ruff-lint" = "ruff check --verbose --fix src"
+"lint:ruff-format" = "ruff format --verbose src"
+"lint:mypy" = "mypy --verbose src"
 "lint:tox" = "tox"
 
 [tool.hatch.metadata]
@@ -82,18 +79,21 @@ write_to = "src/pypcd4/_version.py"
 version_scheme = "guess-next-dev"
 local_scheme = "node-and-date"
 
-[tool.isort]
-line_length = 100
-profile = "black"
-
-[tool.flake8]
-max-line-length = 100
-max-complexity = 18
-ignore = "E203,E266,W503,"
-
-[tool.black]
-target-version = ["py38", "py39", "py310", "py311", "py312"]
+[tool.ruff]
 line-length = 100
+indent-width = 4
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "PLR", "B", "ANN"]
+ignore = ["ANN101", "ANN102"]
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+docstring-code-line-length = 60
 
 [tool.mypy]
 ignore_missing_imports = true

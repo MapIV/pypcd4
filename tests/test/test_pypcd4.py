@@ -5,7 +5,6 @@ from tempfile import TemporaryDirectory
 import numpy as np
 import pytest
 from pydantic import ValidationError
-
 from pypcd4 import Encoding, MetaData, PointCloud
 
 
