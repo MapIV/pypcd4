@@ -92,11 +92,10 @@ max-complexity = 18
 ignore = "E203,E266,W503,"
 
 [tool.black]
-target-version = ["py38", "py39", "py310", "py311"]
+target-version = ["py38", "py39", "py310", "py311", "py312"]
 line-length = 100
 
 [tool.mypy]
-no_strict_optional = true
 ignore_missing_imports = true
 check_untyped_defs = true
 
@@ -110,6 +109,7 @@ legacy_tox_ini = """
         py39
         py310
         py311
+        py312
 
     [testenv]
     deps = pytest

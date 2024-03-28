@@ -5,11 +5,19 @@
 #   pre: false
 #   features: []
 #   all-features: false
+#   with-sources: false
 
 -e file:.
 annotated-types==0.6.0
+    # via pydantic
 numpy==1.26.2
+    # via pypcd4
 pydantic==2.5.2
+    # via pypcd4
 pydantic-core==2.14.5
+    # via pydantic
 python-lzf==0.2.4
+    # via pypcd4
 typing-extensions==4.9.0
+    # via pydantic
+    # via pydantic-core

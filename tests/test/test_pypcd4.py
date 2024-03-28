@@ -129,7 +129,9 @@ def test_parse_pcd_header_with_negative_viewpoint(pcd_header_with_negative_viewp
     assert metadata.data == "ascii"
 
 
-def test_parse_pcd_header_with_underscore_in_fields(pcd_header_with_underscore_in_fields):
+def test_parse_pcd_header_with_underscore_in_fields(
+    pcd_header_with_underscore_in_fields,
+):
     metadata = MetaData.parse_header(pcd_header_with_underscore_in_fields)
 
     assert metadata.version == ".7"
@@ -407,19 +409,40 @@ def test_from_xyzirgbl_points():
     pc = PointCloud.from_xyzirgbl_points(points, label_type)
 
     assert pc.fields == ("x", "y", "z", "intensity", "rgb", "label")
-    assert pc.types == (np.float32, np.float32, np.float32, np.float32, np.float32, label_type)
+    assert pc.types == (
+        np.float32,
+        np.float32,
+        np.float32,
+        np.float32,
+        np.float32,
+        label_type,
+    )
 
     label_type = np.float32
     pc = PointCloud.from_xyzirgbl_points(points, label_type)
 
     assert pc.fields == ("x", "y", "z", "intensity", "rgb", "label")
-    assert pc.types == (np.float32, np.float32, np.float32, np.float32, np.float32, label_type)
+    assert pc.types == (
+        np.float32,
+        np.float32,
+        np.float32,
+        np.float32,
+        np.float32,
+        label_type,
+    )
 
     label_type = np.uint8
     pc = PointCloud.from_xyzirgbl_points(points, label_type)
 
     assert pc.fields == ("x", "y", "z", "intensity", "rgb", "label")
-    assert pc.types == (np.float32, np.float32, np.float32, np.float32, np.float32, label_type)
+    assert pc.types == (
+        np.float32,
+        np.float32,
+        np.float32,
+        np.float32,
+        np.float32,
+        label_type,
+    )
 
 
 def test_from_xyzt_points():
@@ -446,7 +469,14 @@ def test_from_xyzirt_points():
     pc = PointCloud.from_xyzirt_points(points)
 
     assert pc.fields == ("x", "y", "z", "intensity", "ring", "time")
-    assert pc.types == (np.float32, np.float32, np.float32, np.float32, np.uint16, np.float32)
+    assert pc.types == (
+        np.float32,
+        np.float32,
+        np.float32,
+        np.float32,
+        np.uint16,
+        np.float32,
+    )
 
 
 def test_from_xyzit_points():
@@ -473,7 +503,14 @@ def test_from_xyzisc_points():
     pc = PointCloud.from_xyzisc_points(points)
 
     assert pc.fields == ("x", "y", "z", "intensity", "stamp", "classification")
-    assert pc.types == (np.float32, np.float32, np.float32, np.float32, np.float64, np.uint8)
+    assert pc.types == (
+        np.float32,
+        np.float32,
+        np.float32,
+        np.float32,
+        np.float64,
+        np.uint8,
+    )
 
 
 def test_from_xyzrgbs_points():
@@ -491,7 +528,14 @@ def test_from_xyzirgbs_points():
     pc = PointCloud.from_xyzirgbs_points(points)
 
     assert pc.fields == ("x", "y", "z", "intensity", "rgb", "stamp")
-    assert pc.types == (np.float32, np.float32, np.float32, np.float32, np.float32, np.float64)
+    assert pc.types == (
+        np.float32,
+        np.float32,
+        np.float32,
+        np.float32,
+        np.float32,
+        np.float64,
+    )
 
 
 def test_from_xyzirgbsc_points():
@@ -764,3 +808,30 @@ def test_pointcloud_concatenation():
     pc5 = PointCloud.from_points(in_points, fields, (np.float32, np.int8, np.float32))
     with pytest.raises(ValueError):
         pc + pc5
+
+
+def test_pointcloud_getitem():
+    in_points = np.random.randint(0, 1000, (100, 3))
+    fields = ("x", "y", "z")
+    types = (np.float32, np.int8, np.uint64)
+    pc = PointCloud.from_points(in_points, fields, types)
+
+    # Can filter PointCloud
+    mask1 = (pc.pc_data["x"] > 0.5) & (pc.pc_data["y"] < 0.5)
+    pc2 = pc[mask1]
+    assert pc2.points == np.count_nonzero(mask1)
+    assert pc2.fields == pc.fields
+    assert pc2.types == pc.types
+
+    # Can filter PointCloud with mask can be squeezed
+    mask2 = pc.numpy("x") > 0.5
+    mask2 = mask2[:, None, None, None]
+    pc3 = pc[mask2]
+    assert pc3.points == np.count_nonzero(mask2)
+    assert pc3.fields == pc.fields
+    assert pc3.types == pc.types
+
+    # Cannot filter mask dimension is not 1
+    mask3 = pc.numpy(("x", "y")) > 0.5
+    with pytest.raises(ValueError):
+        pc[mask3]

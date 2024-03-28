@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Any, ClassVar
 
 import numpy as np
+import numpy.typing as npt
 
 
 @dataclass
@@ -68,7 +69,7 @@ class sensor_msgs__msg__PointCloud2:
 PointCloud2 = sensor_msgs__msg__PointCloud2
 
 
-TYPE_MAPPINGS = [
+TYPE_MAPPINGS: list[tuple[int, npt.DTypeLike]] = [
     (PointField.INT8, np.dtype("int8")),
     (PointField.UINT8, np.dtype("uint8")),
     (PointField.INT16, np.dtype("int16")),
@@ -116,6 +117,8 @@ def pointcloud2_to_array(msg: PointCloud2) -> np.ndarray:
     dtype = build_dtype(msg)
 
     array = np.frombuffer(msg.data, dtype)
-    array = np.hstack([array[n][:, None] for n in array.dtype.names if not n.startswith("__")])
+    array = np.hstack(
+        [array[n][:, None] for n in array.dtype.names if not n.startswith("__")]  # type: ignore
+    )
 
     return array

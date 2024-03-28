@@ -6,22 +6,22 @@ import string
 import struct
 from enum import Enum
 from pathlib import Path
-from typing import BinaryIO, List, Literal, Optional, Sequence, Tuple, Type, Union
+from typing import BinaryIO, List, Literal, Optional, Sequence, Tuple, Union
 
 import lzf
 import numpy as np
+import numpy.typing as npt
 from pydantic import BaseModel, NonNegativeInt, PositiveInt
 
 from .pointcloud2 import PFTYPE_TO_NPTYPE, PointCloud2, pointcloud2_to_array
 
-NpNumberType = Type[Union[np.integer, np.floating]]
 PathLike = Union[str, Path]
 
 MetaDataVersion = Literal[".7", "0.7"]
 MetaDataViewPoint = Tuple[float, float, float, float, float, float, float]
 
 NUMPY_TYPE_TO_PCD_TYPE: dict[
-    np.dtype,
+    npt.DTypeLike,
     Tuple[str, int],
 ] = {
     np.dtype("uint8"): ("U", 1),
@@ -38,7 +38,7 @@ NUMPY_TYPE_TO_PCD_TYPE: dict[
 
 PCD_TYPE_TO_NUMPY_TYPE: dict[
     Tuple[str, int],
-    NpNumberType,
+    npt.DTypeLike,
 ] = {
     ("F", 4): np.float32,
     ("F", 8): np.float64,
@@ -148,22 +148,22 @@ class MetaData(BaseModel):
 
     def build_dtype(self) -> np.dtype[np.void]:
         field_names: List[str] = []
-        type_names: List[np.dtype] = []
+        np_types: List[npt.DTypeLike] = []
 
         for i, field in enumerate(self.fields):
-            np_type: np.dtype = np.dtype(PCD_TYPE_TO_NUMPY_TYPE[(self.type[i], self.size[i])])
+            np_type: npt.DTypeLike = np.dtype(PCD_TYPE_TO_NUMPY_TYPE[(self.type[i], self.size[i])])
 
             if (count := self.count[i]) == 1:
                 field_names.append(field)
-                type_names.append(np_type)
+                np_types.append(np_type)
             else:
                 field_names.extend([f"{field}_{i:04d}" for i in range(count)])
-                type_names.extend([np_type] * count)
+                np_types.extend([np_type] * count)
 
-        return np.dtype([x for x in zip(field_names, type_names)])
+        return np.dtype([x for x in zip(field_names, np_types)])
 
 
-def _parse_pc_data(fp: BinaryIO, metadata: MetaData) -> np.ndarray:
+def _parse_pc_data(fp: BinaryIO, metadata: MetaData) -> npt.NDArray:
     dtype = metadata.build_dtype()
 
     if metadata.points > 0:
@@ -171,7 +171,7 @@ def _parse_pc_data(fp: BinaryIO, metadata: MetaData) -> np.ndarray:
             pc_data = np.loadtxt(fp, dtype, delimiter=" ")
         elif metadata.data == Encoding.BINARY:
             buffer = fp.read(metadata.points * dtype.itemsize)
-            pc_data = np.frombuffer(buffer, dtype)  # type: ignore
+            pc_data = np.frombuffer(buffer, dtype)
         else:
             compressed_size, uncompressed_size = struct.unpack("II", fp.read(8))  # type: ignore
 
@@ -184,7 +184,7 @@ def _parse_pc_data(fp: BinaryIO, metadata: MetaData) -> np.ndarray:
 
             offset = 0
             pc_data = np.zeros(metadata.width, dtype=dtype)
-            for name in dtype.names:
+            for name in dtype.names:  # type: ignore
                 dt: np.dtype = dtype[name]
                 bytes = dt.itemsize * metadata.width
                 pc_data[name] = np.frombuffer(buffer[offset : (offset + bytes)], dtype=dt)
@@ -196,15 +196,15 @@ def _parse_pc_data(fp: BinaryIO, metadata: MetaData) -> np.ndarray:
 
 
 def _compose_pc_data(
-    points: Union[np.ndarray, Sequence[np.ndarray]], metadata: MetaData
-) -> np.ndarray:
-    arrays: Sequence[np.ndarray] = tuple(points.T) if isinstance(points, np.ndarray) else points
+    points: Union[npt.NDArray, Sequence[npt.NDArray]], metadata: MetaData
+) -> npt.NDArray:
+    arrays: Sequence[npt.NDArray] = tuple(points.T) if isinstance(points, np.ndarray) else points
 
     return np.rec.fromarrays(arrays, dtype=metadata.build_dtype())
 
 
 class PointCloud:
-    def __init__(self, metadata: MetaData, pc_data: np.ndarray) -> None:
+    def __init__(self, metadata: MetaData, pc_data: npt.NDArray) -> None:
         self.metadata = metadata
         self.pc_data = pc_data
 
@@ -247,23 +247,23 @@ class PointCloud:
 
     @staticmethod
     def from_points(
-        points: Union[np.ndarray, List[np.ndarray], Tuple[np.ndarray, ...]],
+        points: Union[npt.NDArray, List[npt.NDArray], Tuple[npt.NDArray, ...]],
         fields: Sequence[str],
-        types: Sequence[Union[NpNumberType, np.dtype]],
+        types: Sequence[npt.DTypeLike],
         count: Optional[Sequence[int]] = None,
     ) -> PointCloud:
         """Create PointCloud from 2D numpy array or sequence of 1D numpy arrays of each field
 
         Args:
-            points (Union[np.ndarray, List[np.ndarray], Tuple[np.ndarray, ...]]): Numpy array
+            points (Union[npt.NDArray, List[npt.NDArray], Tuple[npt.NDArray, ...]]): Numpy array
             fields (Sequence[str]): Field names for each numpy array or sequence of numpy arrays
-            types (Sequence[Union[NpNumberType, np.dtype]]): Numpy type for each numpy array or
+            types (Sequence[npt.DTypeLike]): Numpy type for each numpy array or
                 sequence of numpy arrays
             count (Optional[Sequence[int]], optional): Number of values for each numpy array or
                 sequence of numpy arrays. If None, set to 1 for all fields. Defaults to None.
 
         Raises:
-            TypeError: Raise if `points` type is neither `np.ndarray` nor `Sequence[np.ndarray]`.
+            TypeError: Raise if `points` type is neither `npt.NDArray` nor `Sequence[npt.NDArray]`.
 
         Returns:
             PointCloud: PointCloud object
@@ -345,28 +345,28 @@ class PointCloud:
         return PointCloud(metadata, _compose_pc_data(points, metadata))
 
     @staticmethod
-    def from_xyz_points(points: np.ndarray) -> PointCloud:
+    def from_xyz_points(points: npt.NDArray) -> PointCloud:
         fields = ("x", "y", "z")
         types = (np.float32, np.float32, np.float32)
 
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def from_xyzi_points(points: np.ndarray) -> PointCloud:
+    def from_xyzi_points(points: npt.NDArray) -> PointCloud:
         fields = ("x", "y", "z", "intensity")
         types = (np.float32, np.float32, np.float32, np.float32)
 
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def from_xyzl_points(points: np.ndarray, label_type: NpNumberType = np.float32) -> PointCloud:
+    def from_xyzl_points(points: npt.NDArray, label_type: npt.DTypeLike = np.float32) -> PointCloud:
         fields = ("x", "y", "z", "label")
         types = (np.float32, np.float32, np.float32, label_type)
 
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def from_xyzrgb_points(points: np.ndarray) -> PointCloud:
+    def from_xyzrgb_points(points: npt.NDArray) -> PointCloud:
         fields = ("x", "y", "z", "rgb")
         types = (np.float32, np.float32, np.float32, np.float32)
 
@@ -374,7 +374,7 @@ class PointCloud:
 
     @staticmethod
     def from_xyzrgbl_points(
-        points: np.ndarray, label_type: NpNumberType = np.float32
+        points: npt.NDArray, label_type: npt.DTypeLike = np.float32
     ) -> PointCloud:
         fields = ("x", "y", "z", "rgb", "label")
         types = (np.float32, np.float32, np.float32, np.float32, label_type)
@@ -382,14 +382,16 @@ class PointCloud:
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def from_xyzil_points(points: np.ndarray, label_type: NpNumberType = np.float32) -> PointCloud:
+    def from_xyzil_points(
+        points: npt.NDArray, label_type: npt.DTypeLike = np.float32
+    ) -> PointCloud:
         fields = ("x", "y", "z", "intensity", "label")
         types = (np.float32, np.float32, np.float32, np.float32, label_type)
 
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def from_xyzirgb_points(points: np.ndarray) -> PointCloud:
+    def from_xyzirgb_points(points: npt.NDArray) -> PointCloud:
         fields = ("x", "y", "z", "intensity", "rgb")
         types = (np.float32, np.float32, np.float32, np.float32, np.float32)
 
@@ -397,7 +399,7 @@ class PointCloud:
 
     @staticmethod
     def from_xyzirgbl_points(
-        points: np.ndarray, label_type: NpNumberType = np.float32
+        points: npt.NDArray, label_type: npt.DTypeLike = np.float32
     ) -> PointCloud:
         fields = ("x", "y", "z", "intensity", "rgb", "label")
         types = (np.float32, np.float32, np.float32, np.float32, np.float32, label_type)
@@ -405,56 +407,56 @@ class PointCloud:
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def from_xyzt_points(points: np.ndarray) -> PointCloud:
+    def from_xyzt_points(points: npt.NDArray) -> PointCloud:
         fields = ("x", "y", "z", "sec", "nsec")
         types = (np.float32, np.float32, np.float32, np.uint32, np.uint32)
 
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def from_xyzir_points(points: np.ndarray) -> PointCloud:
+    def from_xyzir_points(points: npt.NDArray) -> PointCloud:
         fields = ("x", "y", "z", "intensity", "ring")
         types = (np.float32, np.float32, np.float32, np.float32, np.uint16)
 
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def from_xyzirt_points(points: np.ndarray) -> PointCloud:
+    def from_xyzirt_points(points: npt.NDArray) -> PointCloud:
         fields = ("x", "y", "z", "intensity", "ring", "time")
         types = (np.float32, np.float32, np.float32, np.float32, np.uint16, np.float32)
 
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def from_xyzit_points(points: np.ndarray) -> PointCloud:
+    def from_xyzit_points(points: npt.NDArray) -> PointCloud:
         fields = ("x", "y", "z", "intensity", "timestamp")
         types = (np.float32, np.float32, np.float32, np.float32, np.float64)
 
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def from_xyzis_points(points: np.ndarray) -> PointCloud:
+    def from_xyzis_points(points: npt.NDArray) -> PointCloud:
         fields = ("x", "y", "z", "intensity", "stamp")
         types = (np.float32, np.float32, np.float32, np.float32, np.float64)
 
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def from_xyzisc_points(points: np.ndarray) -> PointCloud:
+    def from_xyzisc_points(points: npt.NDArray) -> PointCloud:
         fields = ("x", "y", "z", "intensity", "stamp", "classification")
         types = (np.float32, np.float32, np.float32, np.float32, np.float64, np.uint8)
 
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def from_xyzrgbs_points(points: np.ndarray) -> PointCloud:
+    def from_xyzrgbs_points(points: npt.NDArray) -> PointCloud:
         fields = ("x", "y", "z", "rgb", "stamp")
         types = (np.float32, np.float32, np.float32, np.float32, np.float64)
 
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def from_xyzirgbs_points(points: np.ndarray) -> PointCloud:
+    def from_xyzirgbs_points(points: npt.NDArray) -> PointCloud:
         fields = ("x", "y", "z", "intensity", "rgb", "stamp")
         types = (
             np.float32,
@@ -468,7 +470,7 @@ class PointCloud:
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def from_xyzirgbsc_points(points: np.ndarray) -> PointCloud:
+    def from_xyzirgbsc_points(points: npt.NDArray) -> PointCloud:
         fields = ("x", "y", "z", "intensity", "rgb", "stamp", "classification")
         types = (
             np.float32,
@@ -483,7 +485,7 @@ class PointCloud:
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def from_xyziradt_points(points: np.ndarray) -> PointCloud:
+    def from_xyziradt_points(points: npt.NDArray) -> PointCloud:
         fields = (
             "x",
             "y",
@@ -510,7 +512,7 @@ class PointCloud:
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def from_ouster_points(points: np.ndarray) -> PointCloud:
+    def from_ouster_points(points: npt.NDArray) -> PointCloud:
         fields = (
             "x",
             "y",
@@ -540,12 +542,12 @@ class PointCloud:
     def from_msg(msg: PointCloud2) -> PointCloud:
         points = pointcloud2_to_array(msg)
         fields = [f.name for f in msg.fields]
-        types = [PFTYPE_TO_NPTYPE[f.datatype] for f in msg.fields]
+        types: list[npt.DTypeLike] = [PFTYPE_TO_NPTYPE[f.datatype] for f in msg.fields]
 
-        return PointCloud.from_points(points, fields, types)  # type: ignore
+        return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def encode_rgb(rgb: np.ndarray | list[np.ndarray]) -> np.ndarray:
+    def encode_rgb(rgb: npt.NDArray | list[npt.NDArray]) -> npt.NDArray:
         """
         Encode Nx3 uint8 array with RGB values to
         Nx1 float32 array with bit-packed RGB
@@ -567,7 +569,7 @@ class PointCloud:
         return rgb_u32
 
     @staticmethod
-    def decode_rgb(rgb: np.ndarray) -> np.ndarray:
+    def decode_rgb(rgb: npt.NDArray) -> npt.NDArray:
         """
         Decode Nx1 float32 array with bit-packed RGB to
         Nx3 uint8 array with RGB values
@@ -597,11 +599,11 @@ class PointCloud:
         return self.metadata.fields
 
     @property
-    def types(self) -> Tuple[NpNumberType, ...]:
+    def types(self) -> Tuple[npt.DTypeLike, ...]:
         """Returns types of the point cloud
 
         Returns:
-            Tuple[NpNumberType, ...]: Tuple of numpy types for each field
+            Tuple[npt.DTypeLike, ...]: Tuple of numpy types for each field
 
         >>> pc.types
         (np.float32, np.float32, np.float32)
@@ -637,7 +639,7 @@ class PointCloud:
 
         return self.metadata.points
 
-    def numpy(self, fields: Optional[Sequence[str]] = None) -> np.ndarray:
+    def numpy(self, fields: Optional[Sequence[str]] = None) -> npt.NDArray:
         """Returns numpy array of the point cloud
 
         Args:
@@ -645,7 +647,7 @@ class PointCloud:
                 If None, all fields are returned. Defaults to None.
 
         Returns:
-            np.ndarray: Numpy array of the point cloud
+            npt.NDArray: Numpy array of the point cloud
 
         >>> pc.fields
         ("x", "y", "z")
@@ -701,7 +703,7 @@ class PointCloud:
             )
         if self.types != other.types:
             raise ValueError(
-                "Can't concatenate point clouds with different metadata. "
+                "Can't concatenate point clouds with different types. "
                 f"({self.types} vs. {other.types})"
             )
 
@@ -710,6 +712,29 @@ class PointCloud:
         )
 
         return concatenated_pc
+
+    def __getitem__(self, mask: npt.NDArray[np.bool_]) -> PointCloud:
+        """Returns a point cloud with only the points that match the mask
+
+        >>> np.random.seed(42)
+        >>> pc = PointCloud.from_xyz_points(np.random.rand(100, 3))
+        >>> pc.points
+        10
+        >>> mask = (pc.pc_data["x"] > 0.5) & (pc.pc_data["y"] < 0.5)
+        >>> pc[mask].points
+        3
+        >>> pc[mask].numpy()
+        [[0.5986585  0.15601864 0.15599452]
+        [0.7080726  0.02058449 0.96990985]
+        [0.83244264 0.21233912 0.18182497]]
+        """
+
+        mask = mask.squeeze()
+
+        if mask.ndim != 1:
+            raise ValueError(f"mask array must be 1-dimensional but got {mask.ndim}")
+
+        return PointCloud.from_points(self.numpy()[mask], self.fields, self.types)
 
     def _save_as_ascii(self, fp: BinaryIO) -> None:
         """Saves point cloud to a file as a ascii
@@ -747,7 +772,7 @@ class PointCloud:
 
         uncompressed = b"".join(
             np.ascontiguousarray(self.pc_data[field]).tobytes()
-            for field in self.pc_data.dtype.names
+            for field in self.pc_data.dtype.names  # type: ignore
         )
 
         if (compressed := lzf.compress(uncompressed)) is None:
