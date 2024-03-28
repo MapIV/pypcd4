@@ -92,7 +92,7 @@ class MetaData(BaseModel):
 
         _header = {}
         for line in lines:
-            if line.startswith("#") or len(line) < 2:
+            if line.startswith("#") or len(line) < 2:  # noqa: PLR2004
                 continue
 
             if (match := re.match(HEADER_PATTERN, line)) is None:
@@ -734,7 +734,12 @@ class PointCloud:
         if mask.ndim != 1:
             raise ValueError(f"mask array must be 1-dimensional but got {mask.ndim}")
 
-        return PointCloud.from_points(self.numpy()[mask], self.fields, self.types)
+        points_list = [
+            self.pc_data[field][mask]
+            for field in self.pc_data.dtype.names  # type: ignore
+        ]
+
+        return PointCloud.from_points(points_list, self.fields, self.types)
 
     def _save_as_ascii(self, fp: BinaryIO) -> None:
         """Saves point cloud to a file as a ascii
