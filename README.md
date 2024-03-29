@@ -113,24 +113,52 @@ Please note that the two PointCloud objects must have the same fields and types.
 
 ### Filtering a PointCloud
 
-The `pypcd4` library provides a convenient way to filter a `PointCloud` using a mask.
-Here's an example of how you can use it:
+The `pypcd4` library provides a convenient way to filter a `PointCloud` using a subscript.
+
+#### Using a Slice
+
+You can use a slice to access a range of points in the point cloud. Here’s an example:
 
 ```python
-# Create a random PointCloud
-pc = PointCloud.from_xyz_points(np.random.rand(100, 3))
+# Create a point cloud with random points
+pc = PointCloud.from_xyz_points(np.random.rand(10, 3))
 
-# Create a mask
-mask = (pc.pc_data["x"] > 0.5) & (pc.pc_data["y"] < 0.5)
-
-# Apply the mask to the PointCloud
-filtered_pc = pc[mask]
-
-# The filtered PointCloud only includes the points that match the mask
-print(filtered_pc.numpy())
+# Access points using a slice
+subset = pc[3:8]
 ```
 
-Please note that the mask must be a 1-dimensional array. If it’s not, a `ValueError` will be raised.
+In this case, subset will be a new PointCloud object containing only the points from index 3 to 7.
+
+#### Using a Boolean Mask
+
+You can use a boolean mask to access points that satisfy certain conditions. Here’s an example:
+
+```python
+# Create a point cloud with random points
+pc = PointCloud.from_xyz_points(np.random.rand(10000, 3))
+
+# Create a boolean mask
+mask = (pc.pc_data["x"] > 0.5) & (pc.pc_data["y"] < 0.5)
+
+# Access points using the mask
+subset = pc[mask]
+```
+
+In this case, subset will be a new PointCloud object containing only the points where the x-coordinate is greater than 0.5 and the y-coordinate is less than 0.5.
+
+#### Using Field Names
+
+You can use a field name or a sequence of field names to access specific fields in the point cloud. Here’s an example:
+
+```python
+# Create a point cloud with random points
+pc = PointCloud.from_xyz_points(np.random.rand(100, 3))
+
+# Access specific fields
+subset = pc[("x", "y")]
+```
+
+In this case, subset will be a new PointCloud object containing only the x and y coordinates of the points. The z-coordinate will not be included.
 
 ### Saving Your Work
 
