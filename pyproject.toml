@@ -6,7 +6,7 @@ authors = [{ name = "urasakikeisuke", email = "keisuke.urasaki@map4.jp" }]
 dependencies = [
     "numpy>=1.21.0",
     "python-lzf>=0.2.4",
-    "pydantic >=1.10.8, <=2.5.2",
+    "pydantic >=1.10.8, <=2.6.4",
 ]
 readme = "README.md"
 requires-python = ">= 3.8.2"
@@ -59,9 +59,9 @@ lint = { chain = [
     "lint:mypy",
     "lint:tox",
 ] }
-"lint:ruff-lint" = "ruff check --verbose --fix src"
-"lint:ruff-format" = "ruff format --verbose src"
-"lint:mypy" = "mypy --verbose src"
+"lint:ruff-lint" = "ruff check --fix src"
+"lint:ruff-format" = "ruff format src"
+"lint:mypy" = "mypy src"
 "lint:tox" = "tox"
 
 [tool.hatch.metadata]
@@ -85,7 +85,7 @@ indent-width = 4
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "PLR", "B", "ANN"]
-ignore = ["ANN101", "ANN102"]
+ignore = ["ANN101", "ANN102", "PLR2004"]
 fixable = ["ALL"]
 unfixable = []
 

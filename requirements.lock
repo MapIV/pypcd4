@@ -10,11 +10,11 @@
 -e file:.
 annotated-types==0.6.0
     # via pydantic
-numpy==1.26.2
+numpy==1.26.4
     # via pypcd4
-pydantic==2.5.2
+pydantic==2.6.4
     # via pypcd4
-pydantic-core==2.14.5
+pydantic-core==2.16.3
     # via pydantic
 python-lzf==0.2.4
     # via pypcd4
