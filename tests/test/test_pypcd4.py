@@ -809,20 +809,33 @@ def test_pointcloud_concatenation():
         pc + pc5
 
 
-def test_pointcloud_getitem():
+def test_pointcloud_getitem_with_slice():
     in_points = np.random.randint(0, 1000, (100, 3))
     fields = ("x", "y", "z")
     types = (np.float32, np.int8, np.uint64)
     pc = PointCloud.from_points(in_points, fields, types)
 
-    # Can filter PointCloud
+    # Can filter PointCloud with a slice
+    pc2 = pc[10:30]
+    assert pc2.points == 20
+    assert pc2.fields == pc.fields
+    assert pc2.types == pc.types
+
+
+def test_pointcloud_getitem_with_boolean_mask():
+    in_points = np.random.randint(0, 1000, (100, 3))
+    fields = ("x", "y", "z")
+    types = (np.float32, np.int8, np.uint64)
+    pc = PointCloud.from_points(in_points, fields, types)
+
+    # Can filter PointCloud with a boolean mask
     mask1 = (pc.pc_data["x"] > 0.5) & (pc.pc_data["y"] < 0.5)
     pc2 = pc[mask1]
     assert pc2.points == np.count_nonzero(mask1)
     assert pc2.fields == pc.fields
     assert pc2.types == pc.types
 
-    # Can filter PointCloud with mask can be squeezed
+    # Can filter PointCloud with a boolean mask can be squeezed
     mask2 = pc.numpy("x") > 0.5
     mask2 = mask2[:, None, None, None]
     pc3 = pc[mask2]
@@ -830,7 +843,30 @@ def test_pointcloud_getitem():
     assert pc3.fields == pc.fields
     assert pc3.types == pc.types
 
-    # Cannot filter mask dimension is not 1
+    # Cannot filter by a boolean mask since the dimension is not 1
     mask3 = pc.numpy(("x", "y")) > 0.5
     with pytest.raises(ValueError):
         pc[mask3]
+
+
+def test_pointcloud_getitem_with_field_names():
+    in_points = np.random.randint(0, 1000, (100, 3))
+    fields = ("x", "y", "z")
+    types = (np.float32, np.int8, np.uint64)
+    pc = PointCloud.from_points(in_points, fields, types)
+
+    # Can filter PointCloud with a field name "x"
+    pc2 = pc["x"]
+    assert pc2.points == pc.points
+    assert pc2.fields == ("x",)
+    assert pc2.types == (np.float32,)
+
+    # Can filter PointCloud with a field names "x" and "y"
+    pc3 = pc[("x", "y")]
+    assert pc3.points == pc.points
+    assert pc3.fields == ("x", "y")
+    assert pc3.types == (np.float32, np.int8)
+
+    # Cannot filter by fields names since the field name "a" is invalid
+    with pytest.raises(ValueError):
+        pc[("x", "y", "a")]

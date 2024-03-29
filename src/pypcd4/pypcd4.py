@@ -239,7 +239,11 @@ class PointCloud:
             PointCloud: PointCloud object
 
         >>> PointCloud.from_path("test.pcd")
-        <pypcd4.PointCloud object at 0x7f7c9a3d8b00>
+        PointCloud(
+            fields=('x', 'y', 'z') size=(4, 4, 4) type=('F', 'F', 'F') count=(1, 1, 1) points=10000
+            width=10000 height=1 version='0.7' viewpoint=(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+            data=<Encoding.BINARY_COMPRESSED: 'binary_compressed'>
+        )
         """
 
         with open(path, mode="rb") as fp:
@@ -273,7 +277,11 @@ class PointCloud:
                 ("x", "y", "z"),
                 (np.float32, np.float32, np.float32)
             )
-        <pypcd4.PointCloud object at 0x7f7c9a3d8b00>
+        PointCloud(
+            fields=('x', 'y', 'z') size=(4, 4, 4) type=('F', 'F', 'F') count=(1, 1, 1) points=2
+            width=2 height=1 version='0.7' viewpoint=(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+            data=<Encoding.BINARY_COMPRESSED: 'binary_compressed'>
+        )
 
         >>> PointCloud.from_points(
                 [
@@ -283,7 +291,11 @@ class PointCloud:
                 ("x", "y", "z"),
                 (np.float32, np.float32, np.float32)
             )
-        <pypcd4.PointCloud object at 0x7f7c9a3d8b00>
+        PointCloud(
+            fields=('x', 'y', 'z') size=(4, 4, 4) type=('F', 'F', 'F') count=(1, 1, 1) points=2
+            width=2 height=1 version='0.7' viewpoint=(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+            data=<Encoding.BINARY_COMPRESSED: 'binary_compressed'>
+        )
         """
 
         if not isinstance(points, (np.ndarray, list, tuple)):
@@ -684,63 +696,6 @@ class PointCloud:
 
         return np.vstack(_stack).T
 
-    def concatenate(self, other: PointCloud) -> PointCloud:
-        """
-        Concatenates two point clouds together
-        """
-
-        return self.__add__(other)
-
-    def __add__(self, other: PointCloud) -> PointCloud:
-        """
-        Concatenates two point clouds together
-        """
-
-        if self.fields != other.fields:
-            raise ValueError(
-                "Can't concatenate point clouds with different fields. "
-                f"({self.fields} vs. {other.fields})"
-            )
-        if self.types != other.types:
-            raise ValueError(
-                "Can't concatenate point clouds with different types. "
-                f"({self.types} vs. {other.types})"
-            )
-
-        concatenated_pc = PointCloud.from_points(
-            np.vstack((self.numpy(), other.numpy())), self.fields, self.types
-        )
-
-        return concatenated_pc
-
-    def __getitem__(self, mask: npt.NDArray[np.bool_]) -> PointCloud:
-        """Returns a point cloud with only the points that match the mask
-
-        >>> np.random.seed(42)
-        >>> pc = PointCloud.from_xyz_points(np.random.rand(100, 3))
-        >>> pc.points
-        10
-        >>> mask = (pc.pc_data["x"] > 0.5) & (pc.pc_data["y"] < 0.5)
-        >>> pc[mask].points
-        3
-        >>> pc[mask].numpy()
-        [[0.5986585  0.15601864 0.15599452]
-        [0.7080726  0.02058449 0.96990985]
-        [0.83244264 0.21233912 0.18182497]]
-        """
-
-        mask = mask.squeeze()
-
-        if mask.ndim != 1:
-            raise ValueError(f"mask array must be 1-dimensional but got {mask.ndim}")
-
-        points_list = [
-            self.pc_data[field][mask]
-            for field in self.pc_data.dtype.names  # type: ignore
-        ]
-
-        return PointCloud.from_points(points_list, self.fields, self.types)
-
     def _save_as_ascii(self, fp: BinaryIO) -> None:
         """Saves point cloud to a file as a ascii
 
@@ -820,3 +775,112 @@ class PointCloud:
         finally:
             if is_open:
                 fp.close()
+
+    def __add__(self, other: PointCloud) -> PointCloud:
+        """Concatenates two point clouds together
+
+        Args:
+            other (PointCloud): Point cloud to concatenate with
+
+        Returns:
+            PointCloud: Concatenated point cloud
+
+        >>> pc1 = PointCloud.from_xyz_points(np.random.rand(10000, 3))
+        >>> pc2 = PointCloud.from_xyz_points(np.random.rand(10000, 3))
+
+        >>> pc1 + pc2
+        PointCloud(
+            fields=('x', 'y', 'z') size=(4, 4, 4) type=('F', 'F', 'F') count=(1, 1, 1) points=20000
+            width=20000 height=1 version='0.7' viewpoint=(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+            data=<Encoding.BINARY_COMPRESSED: 'binary_compressed'>
+        )
+        """
+
+        if self.fields != other.fields:
+            raise ValueError(
+                "Can't concatenate point clouds with different fields. "
+                f"({self.fields} vs. {other.fields})"
+            )
+        if self.types != other.types:
+            raise ValueError(
+                "Can't concatenate point clouds with different types. "
+                f"({self.types} vs. {other.types})"
+            )
+
+        concatenated_pc = PointCloud.from_points(
+            np.vstack((self.numpy(), other.numpy())), self.fields, self.types
+        )
+
+        return concatenated_pc
+
+    def __getitem__(
+        self, subscript: Union[slice, str, list[str], tuple[str, ...], npt.NDArray[np.bool_]]
+    ) -> PointCloud:
+        """Returns a point cloud with only the points that match the subscript
+
+        Args:
+            subscript (Union[slice, npt.NDArray[np.bool_]]): Subscript to match.
+
+        Returns:
+            PointCloud: Point cloud with only the points that match the subscript.
+
+        >>> pc = PointCloud.from_xyz_points(np.random.rand(10000, 3))
+
+        >>> pc[3:8]
+        PointCloud(
+            fields=('x', 'y', 'z') size=(4, 4, 4) type=('F', 'F', 'F') count=(1, 1, 1) points=5
+            width=5 height=1 version='0.7' viewpoint=(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+            data=<Encoding.BINARY_COMPRESSED: 'binary_compressed'>
+        )
+
+        >>> mask = (pc.pc_data["x"] > 0.5) & (pc.pc_data["y"] < 0.5)
+        >>> pc[mask]
+        PointCloud(
+            fields=('x', 'y', 'z') size=(4, 4, 4) type=('F', 'F', 'F') count=(1, 1, 1) points=2593
+            width=2593 height=1 version='0.7' viewpoint=(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+            data=<Encoding.BINARY_COMPRESSED: 'binary_compressed'>
+        )
+
+        >>> pc[("x", "y")]
+        PointCloud(
+            fields=('x', 'y') size=(4, 4) type=('F', 'F') count=(1, 1) points=10000
+            width=10000 height=1 version='0.7' viewpoint=(0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+            data=<Encoding.BINARY_COMPRESSED: 'binary_compressed'>
+        )
+        """
+
+        points_list: list[npt.NDArray]
+        fields = self.fields
+        types = self.types
+        if isinstance(subscript, slice):
+            points_list = tuple(
+                self.pc_data[field][subscript]
+                for field in self.pc_data.dtype.names  # type: ignore
+            )
+        elif isinstance(subscript, np.ndarray):
+            mask = subscript.squeeze()
+            if mask.ndim != 1:
+                raise ValueError(f"Mask array must be 1-dimensional but got {mask.ndim}")
+
+            points_list = tuple(
+                self.pc_data[field][mask]
+                for field in self.pc_data.dtype.names  # type: ignore
+            )
+        elif isinstance(subscript, str) or all(isinstance(s, str) for s in subscript):
+            if isinstance(subscript, str):
+                subscript = (subscript,)
+
+            if not np.isin(subscript, self.fields).all():
+                raise ValueError(f"Invalid field name(s): {subscript}")
+
+            points_list = [self.pc_data[field] for field in subscript]
+            fields = tuple(subscript)
+            types = tuple(self.pc_data[field].dtype for field in subscript)
+
+        return PointCloud.from_points(points_list, fields, types)
+
+    def __str__(self) -> str:
+        return f"PointCloud({self.metadata})"
+
+    def __len__(self) -> int:
+        return self.points
