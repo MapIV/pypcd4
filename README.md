@@ -84,14 +84,20 @@ pc = PointCloud.from_points(array, fields, types)
 
 ### Working with ROS PointCloud2 Messages
 
-As of v0.4.0, you can convert a ROS PointCloud2 Message to a PointCloud:
+You can convert a ROS PointCloud2 Message to a PointCloud and vice versa:
 
 ```python
-def callback(msg):
-    pc = PointCloud.from_msg(msg)
+def callback(in_msg: sensor_msgs.msg.PointCloud2):
+    # Convert ROS PointCloud2 Message to a PointCloud
+    pc = PointCloud.from_msg(in_msg)
 
     pc.fields
     # ("x", "y", "z", "intensity", "ring", "time")
+
+    # Convert PointCloud to ROS PointCloud2 Message with the input message header
+    out_msg = pc.to_msg(in_msg.header)
+
+    publisher.publish(out_msg)
 ```
 
 ### Concatenating Two PointClouds
