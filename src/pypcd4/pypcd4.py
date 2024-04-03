@@ -6,14 +6,22 @@ import string
 import struct
 from enum import Enum
 from pathlib import Path
-from typing import BinaryIO, List, Literal, Optional, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, BinaryIO, List, Literal, Optional, Sequence, Tuple, Union
 
 import lzf
 import numpy as np
 import numpy.typing as npt
 from pydantic import BaseModel, NonNegativeInt, PositiveInt
 
-from .pointcloud2 import PFTYPE_TO_NPTYPE, PointCloud2, pointcloud2_to_array
+from .pointcloud2 import (
+    NPTYPE_TO_PFTYPE,
+    build_dtype_from_msg,
+    sensor_msgs__msg__PointCloud2,
+)
+
+if TYPE_CHECKING:
+    from sensor_msgs.msg import PointCloud2
+    from std_msgs.msg import Header
 
 PathLike = Union[str, Path]
 
@@ -551,12 +559,93 @@ class PointCloud:
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
-    def from_msg(msg: PointCloud2) -> PointCloud:
-        points = pointcloud2_to_array(msg)
-        fields = [f.name for f in msg.fields]
-        types: list[npt.DTypeLike] = [PFTYPE_TO_NPTYPE[f.datatype] for f in msg.fields]
+    def from_msg(msg: sensor_msgs__msg__PointCloud2) -> PointCloud:
+        """Create a PointCloud from a ROS/ROS 2 sensor_msgs.msg.PointCloud2 message
 
-        return PointCloud.from_points(points, fields, types)
+        Args:
+            msg: The ROS/ROS 2 sensor_msgs/PointCloud2 message
+
+        Returns:
+            The PointCloud
+        """
+
+        pc_data = np.frombuffer(msg.data, build_dtype_from_msg(msg))
+        metadata = MetaData.model_validate(
+            {
+                "fields": pc_data.dtype.names,
+                "size": [
+                    NUMPY_TYPE_TO_PCD_TYPE[pc_data[name].dtype][1]
+                    for name in pc_data.dtype.names  # type: ignore[union-attr]
+                ],
+                "type": [
+                    NUMPY_TYPE_TO_PCD_TYPE[pc_data[name].dtype][0]
+                    for name in pc_data.dtype.names  # type: ignore[union-attr]
+                ],
+                "count": [1] * len(pc_data.dtype.names),  # type: ignore[arg-type]
+                "points": len(pc_data),
+                "width": msg.width,
+                "height": msg.height,
+                "version": "0.7",
+                "viewpoint": (0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0),
+                "data": Encoding.BINARY,
+            }
+        )
+
+        return PointCloud(metadata, pc_data)
+
+    def to_msg(self, header: Optional["Header"] = None) -> "PointCloud2":
+        """Create a ROS/ROS 2 sensor_msgs.msg.PointCloud2 message from the PointCloud
+
+        Args:
+            header: The header to use for the message.
+                    If None, a default header will be used. Default: None.
+
+        Returns:
+            The ROS/ROS 2 sensor_msgs/PointCloud2 message
+        """
+
+        try:
+            from sensor_msgs.msg import PointCloud2, PointField
+            from std_msgs.msg import Header
+        except ImportError:
+            raise ImportError(
+                "The PointCloud.to_msg() method requires an additional ROS/ROS 2 sensor_msg module."
+                " Please install it according to the official installation guide."
+            ) from None
+
+        fields = []
+        itemsize = 0
+        row_step = 0
+        for i, (field, type_, count) in enumerate(zip(self.fields, self.types, self.count)):
+            type_ = np.dtype(type_)
+
+            itemsize += type_.itemsize
+            row_step += type_.itemsize * self.points
+
+            fields.append(
+                PointField(
+                    name=field,
+                    offset=i * type_.itemsize,
+                    datatype=NPTYPE_TO_PFTYPE[type_],
+                    count=count,
+                )
+            )
+
+        data = self.pc_data.tobytes()
+
+        msg = PointCloud2(
+            header=Header() if header is None else header,
+            height=1,
+            width=self.points,
+            is_dense=False,
+            is_bigendian=False,
+            fields=fields,
+            point_step=itemsize,
+            row_step=len(data),
+            data=data,
+        )
+
+        return msg
 
     @staticmethod
     def encode_rgb(rgb: npt.NDArray | list[npt.NDArray]) -> npt.NDArray:
@@ -855,7 +944,7 @@ class PointCloud:
         if isinstance(subscript, slice):
             points_list = tuple(
                 self.pc_data[field][subscript]
-                for field in self.pc_data.dtype.names  # type: ignore
+                for field in self.pc_data.dtype.names  # type: ignore[assignment,union-attr]
             )
         elif isinstance(subscript, np.ndarray):
             mask = subscript.squeeze()
@@ -864,7 +953,7 @@ class PointCloud:
 
             points_list = tuple(
                 self.pc_data[field][mask]
-                for field in self.pc_data.dtype.names  # type: ignore
+                for field in self.pc_data.dtype.names  # type: ignore[assignment,union-attr]
             )
         elif isinstance(subscript, str) or all(isinstance(s, str) for s in subscript):
             if isinstance(subscript, str):
