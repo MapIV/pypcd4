@@ -1,0 +1,59 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: sksat/setup-rye@v0.22.0
+      - name: Sync with Rye
+        run: rye sync
+      - name: Run Ruff check
+        run: rye run ruff check src
+      - name: Run Ruff format
+        run: rye run ruff format --check src
+      - name: Run Mypy
+        run: rye run mypy src
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.12"
+          - "3.11"
+          - "3.10"
+          - "3.9"
+          - "3.8"
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: sksat/setup-rye@v0.22.0
+      - name: Sync with Rye
+        run: rye sync
+      - name: Run pytest
+        run: |
+          set -o pipefail
+          rye run pytest --junitxml=pytest.xml --cov-report=term-missing --cov=src tests/ | tee pytest-coverage.txt
+      - name: Comment coverage report in PR
+        uses: MishaKav/pytest-coverage-comment@v1.1.51
+        with:
+          pytest-coverage-path: ./pytest-coverage.txt
+          junitxml-path: ./pytest.xml
