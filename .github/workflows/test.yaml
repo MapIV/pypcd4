@@ -13,13 +13,26 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.12"
+          - "3.11"
+          - "3.10"
+          - "3.9"
+          - "3.8"
+      fail-fast: false
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-      - uses: sksat/setup-rye@v0.22.0
+          python-version: ${{ matrix.python-version }}
+      - name: Set up Rye
+        uses: eifinger/setup-rye@v2
+        with:
+          enable-cache: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Sync with Rye
         run: rye sync
       - name: Run Ruff check
@@ -45,7 +58,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - uses: sksat/setup-rye@v0.22.0
+      - name: Set up Rye
+        uses: eifinger/setup-rye@v2
+        with:
+          enable-cache: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Sync with Rye
         run: rye sync
       - name: Run pytest
