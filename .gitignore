@@ -47,6 +47,8 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+pytest-coverage.txt
+pytest.xml
 
 # Environments
 .env
@@ -64,3 +66,6 @@ dmypy.json
 
 # Editor
 .vscode/
+
+# Ruff
+.ruff_cache/

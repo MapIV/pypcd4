@@ -164,7 +164,8 @@ pc = PointCloud.from_xyz_points(np.random.rand(100, 3))
 subset = pc[("x", "y")]
 ```
 
-In this case, subset will be a new PointCloud object containing only the x and y coordinates of the points. The z-coordinate will not be included.
+In this case, subset will be a new PointCloud object containing only the x and y coordinates of the points.
+The z-coordinate will not be included.
 
 ### Saving Your Work
 
@@ -173,6 +174,39 @@ Finally, you can save your PointCloud as a .pcd file:
 ```python
 pc.save("nice_point_cloud.pcd")
 ```
+
+## Contributing
+
+We are always looking for contributors. If you are interested in contributing,
+please run the lint and test before submitting a pull request:
+
+### Using Rye (Recommended)
+
+Just run the following command:
+
+```bash
+rye sync
+rye run lint
+```
+
+### Using pip
+
+Install the testing dependencies by the following command:
+
+```bash
+pip install mypy pytest ruff
+```
+
+Then run the following command:
+
+```bash
+ruff check --fix src
+ruff format src
+mypy src
+pytest
+```
+
+Make sure all lints and tests pass before submitting a pull request.
 
 ## License
 
