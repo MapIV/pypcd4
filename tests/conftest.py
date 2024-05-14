@@ -304,3 +304,7 @@ def xyzrgb_binary_path():
 @pytest.fixture
 def xyzrgb_binary_compressed_path():
     return f"{Path(__file__).resolve().parent}/pcd/binary_compressed.pcd"
+
+@pytest.fixture
+def xyzintensity_binary_compressed_organized_path():
+    return f"{Path(__file__).resolve().parent}/pcd/binary_compressed_organized.pcd"

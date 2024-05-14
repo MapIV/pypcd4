@@ -191,10 +191,10 @@ def _parse_pc_data(fp: BinaryIO, metadata: MetaData) -> npt.NDArray:
                 )
 
             offset = 0
-            pc_data = np.zeros(metadata.width, dtype=dtype)
+            pc_data = np.zeros(metadata.points, dtype=dtype)
             for name in dtype.names:  # type: ignore
                 dt: np.dtype = dtype[name]
-                bytes = dt.itemsize * metadata.width
+                bytes = dt.itemsize * metadata.points
                 pc_data[name] = np.frombuffer(buffer[offset : (offset + bytes)], dtype=dt)
                 offset += bytes
     else:

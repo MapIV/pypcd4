@@ -266,6 +266,14 @@ def test_load_binary_compressed_pcd(xyzrgb_binary_compressed_path):
     assert len(pc.pc_data) == pc.metadata.points
 
 
+def test_load_binary_compressed_organized_pcd(xyzintensity_binary_compressed_organized_path):
+    pc = PointCloud.from_path(xyzintensity_binary_compressed_organized_path)
+
+    assert pc.metadata.data == "binary_compressed"
+    assert pc.pc_data.dtype.names == pc.metadata.fields
+    assert len(pc.pc_data) == pc.metadata.points
+
+
 def test_from_points():
     array = np.array([[1, 2, 3], [4, 5, 6]])
     fields = ("x", "y", "z")
