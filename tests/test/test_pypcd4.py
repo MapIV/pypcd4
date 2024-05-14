@@ -242,6 +242,14 @@ def test_load_xyzrgb_ascii_with_empty_points_pcd(xyzrgb_ascii_with_empty_points_
     assert len(pc.pc_data) == pc.metadata.points
 
 
+def test_load_xyzintensity_ascii_organized_pcd(xyzintensity_ascii_organized_path):
+    pc = PointCloud.from_path(xyzintensity_ascii_organized_path)
+
+    assert pc.metadata.data == "ascii"
+    assert pc.pc_data.dtype.names == pc.metadata.fields
+    assert len(pc.pc_data) == pc.metadata.points
+
+
 def test_load_binary_pcd(xyzrgb_binary_path):
     pc = PointCloud.from_path(xyzrgb_binary_path)
 

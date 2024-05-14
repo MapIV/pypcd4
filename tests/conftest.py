@@ -293,6 +293,10 @@ def xyzrgb_ascii_with_empty_points_path():
 
 
 @pytest.fixture
+def xyzintensity_ascii_organized_path():
+    return f"{Path(__file__).resolve().parent}/pcd/ascii_organized.pcd"
+
+@pytest.fixture
 def xyzrgb_binary_path():
     return f"{Path(__file__).resolve().parent}/pcd/binary.pcd"
 
