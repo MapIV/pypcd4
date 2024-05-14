@@ -1,5 +1,26 @@
 # pypcd4
 
+[![Test](https://github.com/MapIV/pypcd4/actions/workflows/test.yaml/badge.svg)](https://github.com/MapIV/pypcd4/actions/workflows/test.yaml)
+![PyPI - Version](https://img.shields.io/pypi/v/pypcd4)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pypcd4)
+![GitHub License](https://img.shields.io/github/license/MapIV/pypcd4)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/pypcd4)
+
+## Table of Contents
+
+* [Description](#description)
+* [Installation](#installation)
+* [Usage](#usage)
+  * [Importing pypcd4](#getting-started)
+  * [Loading PCD File](#working-with-pcd-files)
+  * [Converting to NumPy Array](#converting-between-pointcloud-and-numpy-array)
+  * [Converting to ROS Message](#working-with-ros-pointcloud2-messages)
+  * [Concatenating PointClouds](#concatenating-two-pointclouds)
+  * [Filtering PointClouds](#filtering-a-pointcloud)
+  * [Saving Your Work](#saving-your-work)
+* [Contributing](#contributing)
+* [License](#license)
+
 ## Description
 
 pypcd4 is a modern reimagining of the original [pypcd](https://github.com/dimatura/pypcd) library,
