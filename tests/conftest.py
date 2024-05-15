@@ -1,3 +1,5 @@
+# ruff: noqa: ANN001, ANN201
+
 from pathlib import Path
 
 import pytest
@@ -295,6 +297,11 @@ def xyzrgb_ascii_with_empty_points_path():
 @pytest.fixture
 def xyzintensity_ascii_organized_path():
     return f"{Path(__file__).resolve().parent}/pcd/ascii_organized.pcd"
+
+
+@pytest.fixture
+def xyzintensity_ascii_multi_count_path():
+    return f"{Path(__file__).resolve().parent}/pcd/ascii_multi_count.pcd"
 
 @pytest.fixture
 def xyzrgb_binary_path():

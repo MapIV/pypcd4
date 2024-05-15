@@ -165,7 +165,7 @@ class MetaData(BaseModel):
                 field_names.append(field)
                 np_types.append(np_type)
             else:
-                field_names.extend([f"{field}_{i:04d}" for i in range(count)])
+                field_names.extend([f"{field}__{i:04d}" for i in range(count)])
                 np_types.extend([np_type] * count)
 
         return np.dtype([x for x in zip(field_names, np_types)])
@@ -616,7 +616,7 @@ class PointCloud:
         fields = []
         itemsize = 0
         row_step = 0
-        for i, (field, type_, count) in enumerate(zip(self.fields, self.types, self.count)):
+        for i, (field, type_, count) in enumerate(zip(self.fields, self.types, self.counts)):
             type_ = np.dtype(type_)
 
             itemsize += type_.itemsize
@@ -693,11 +693,34 @@ class PointCloud:
         Returns:
             Tuple[str, ...]: Tuple of field names for each field
 
-        >>> pc.fields
+        Note:
+            If the field count is not 1, the field names will be suffixed with __0000, __0001, etc.
+            If you don't want this behavior, use the `pc.metadata.fields` instead.
+
+        >>> pc1.metadata.count
+        (1, 1, 1)
+
+        >>> pc1.fields
+        ("x", "y", "z")
+
+        >>> pc2.metadata.count
+        (1, 1, 2)
+
+        >>> pc2.fields
+        ("x", "y", "z__0000", "z__0001")
+
+        >>> pc2.metadata.fields
         ("x", "y", "z")
         """
 
-        return self.metadata.fields
+        fields = []
+        for field, count in zip(self.metadata.fields, self.metadata.count):
+            if count == 1:
+                fields.append(field)
+            else:
+                fields.extend(f"{field}__{c:04d}" for c in range(count))
+
+        return tuple(fields)
 
     @property
     def types(self) -> Tuple[npt.DTypeLike, ...]:
@@ -706,26 +729,53 @@ class PointCloud:
         Returns:
             Tuple[npt.DTypeLike, ...]: Tuple of numpy types for each field
 
-        >>> pc.types
-        (np.float32, np.float32, np.float32)
+        Note:
+            If the field count is not 1, the type will be repeated for the number of fields
+
+        >>> pc1.metadata.count
+        (1, 1, 1)
+
+        >>> pc1.types
+        (np.float32, np.int32, np.float32)
+
+        >>> pc2.metadata.count
+        (1, 2, 1)
+
+        >>> pc2.types
+        (np.float32, np.int32, np.int32, np.float32)
         """
 
-        return tuple(
-            PCD_TYPE_TO_NUMPY_TYPE[ts] for ts in zip(self.metadata.type, self.metadata.size)
-        )
+        types = []
+        for ts, count in zip(zip(self.metadata.type, self.metadata.size), self.metadata.count):
+            if count == 1:
+                types.append(PCD_TYPE_TO_NUMPY_TYPE[ts])
+            else:
+                types.extend(PCD_TYPE_TO_NUMPY_TYPE[ts] for _ in range(count))
+
+        return tuple(types)
 
     @property
-    def count(self) -> Tuple[PositiveInt, ...]:
+    def counts(self) -> Tuple[PositiveInt, ...]:
         """Returns number of elements in each field
 
         Returns:
             Tuple[PositiveInt, ...]: Tuple of number of elements in each field
 
-        >>> pc.counts
+        Note:
+            If the field count is not 1, the count will be repeated for the number of its counts
+            If you don't want this behavior, use the `pc.metadata.count` instead.
+
+        >>> pc1.metadata.count
         (1, 1, 1)
+
+        >>> pc2.metadata.count
+        (1, 2, 1)
+
+        >>> pc2.counts
+        (1, 1, 1, 1)
         """
 
-        return self.metadata.count
+        return (1,) * sum(self.metadata.count)
 
     @property
     def points(self) -> int:
