@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  update:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,11 +21,12 @@ jobs:
     - name: Update CONTRIBUTORS.md
       run: |
         echo "# Contributors" > CONTRIBUTORS.md
+        echo "" >> CONTRIBUTORS.md
         p=1
         while true; do
           s=$(curl "https://api.github.com/repos/mapiv/pypcd4/contributors?page=$p") || break
           [ "0" = $(echo $s | jq length) ] && break
-          echo $s | jq -r '.[] | "* " + .login + ""'
+          echo $s | jq -r '.[] | "* [" + .login + "](" + .html_url + ")"';
           p=$((p+1))
         done | sort -f | tee -a CONTRIBUTORS.md
 
