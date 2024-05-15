@@ -76,8 +76,8 @@ local_scheme = "no-local-version"
 
 [tool.setuptools_scm]
 write_to = "src/pypcd4/_version.py"
-version_scheme = "guess-next-dev"
-local_scheme = "node-and-date"
+version_scheme = "only-version"
+local_scheme = "no-local-version"
 
 [tool.ruff]
 line-length = 100
