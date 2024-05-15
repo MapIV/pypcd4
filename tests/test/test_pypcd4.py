@@ -1,3 +1,5 @@
+# ruff: noqa: ANN001, ANN201
+
 from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -181,10 +183,10 @@ def test_build_dtype_with_multi_count_fields(pcd_header_with_multi_count_fields)
     assert metadata.build_dtype() == [
         ("x", "<f4"),
         ("y", "<f4"),
-        ("z_0000", "<f4"),
-        ("z_0001", "<f4"),
-        ("z_0002", "<f4"),
-        ("z_0003", "<f4"),
+        ("z__0000", "<f4"),
+        ("z__0001", "<f4"),
+        ("z__0002", "<f4"),
+        ("z__0003", "<f4"),
     ]
 
 
@@ -278,14 +280,14 @@ def test_from_points():
     array = np.array([[1, 2, 3], [4, 5, 6]])
     fields = ("x", "y", "z")
     types = (np.float32, np.float32, np.float32)
-    count = (1, 1, 1)
+    counts = (1, 1, 1)
 
-    pc = PointCloud.from_points(array, fields, types, count)
+    pc = PointCloud.from_points(array, fields, types, counts)
 
     assert pc.fields == fields
     assert pc.types == types
     assert pc.points == 2
-    assert pc.count == count
+    assert pc.counts == counts
     assert pc.pc_data.dtype.names == fields
 
     assert np.array_equal(pc.pc_data["x"], array.T[0])
@@ -676,6 +678,42 @@ def test_numpy():
 
     out_points = pc.numpy(fields=[])
     assert np.allclose(out_points, np.empty((0, 0)))
+
+
+def test_numpy_with_multi_count_fields(xyzintensity_ascii_multi_count_path):
+    pc = PointCloud.from_path(xyzintensity_ascii_multi_count_path)
+
+    assert pc.fields == (
+        "x",
+        "y",
+        "z",
+        "intensity__0000",
+        "intensity__0001",
+        "intensity__0002",
+        "intensity__0003",
+    )
+    assert pc.metadata.fields == (
+        "x",
+        "y",
+        "z",
+        "intensity",
+    )
+    assert pc.types == (
+        np.float32,
+        np.float32,
+        np.float32,
+        np.float32,
+        np.float32,
+        np.float32,
+        np.float32,
+    )
+    assert pc.counts == (1, 1, 1, 1, 1, 1, 1)
+    assert pc.metadata.count == (1, 1, 1, 4)
+    assert pc.points == 8
+
+    points = pc.numpy()
+
+    assert points.shape == (8, 7)
 
 
 def test_save_as_ascii():
