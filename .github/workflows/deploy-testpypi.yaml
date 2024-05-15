@@ -29,10 +29,4 @@ jobs:
         run: rye build --clean
 
       - name: Publish to TestPyPI
-        run: >
-          rye publish
-            --yes
-            --verbose
-            --repository testpypi
-            --repository-url https://test.pypi.org/legacy/
-            --token ${{ secrets.TEST_PYPI_TOKEN }}
+        run: rye publish --yes --verbose --repository testpypi --repository-url https://test.pypi.org/legacy/ --token ${{ secrets.TEST_PYPI_TOKEN }}
