@@ -1,0 +1,33 @@
+name: Deploy to PyPI
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Rye
+        uses: eifinger/setup-rye@v2
+        with:
+          enable-cache: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync with Rye
+        run: rye sync
+
+      - name: Build distribution packages
+        run: rye build --clean
+
+      - name: Publish to PyPI
+        run: rye publish --yes --verbose --token ${{ secrets.PYPI_TOKEN }}
