@@ -258,6 +258,16 @@ def test_load_binary_compressed_pcd(xyzrgb_binary_compressed_path):
     assert len(pc.pc_data) == pc.metadata.points
 
 
+def test_load_ascii_empty_pcd(ascii_empty_path):
+    with pytest.raises(ValidationError):
+        PointCloud.from_path(ascii_empty_path)
+
+
+def test_load_ascii_invalid_header_pcd(ascii_invalid_header_path):
+    with pytest.raises(ValidationError):
+        PointCloud.from_path(ascii_invalid_header_path)
+
+
 def test_from_points():
     array = np.array([[1, 2, 3], [4, 5, 6]])
     fields = ("x", "y", "z")
