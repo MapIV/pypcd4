@@ -315,3 +315,11 @@ def xyzrgb_binary_compressed_path():
 @pytest.fixture
 def xyzintensity_binary_compressed_organized_path():
     return f"{Path(__file__).resolve().parent}/pcd/binary_compressed_organized.pcd"
+
+@pytest.fixture
+def ascii_empty_path():
+    return f"{Path(__file__).resolve().parent}/pcd/ascii_empty.pcd"
+
+@pytest.fixture
+def ascii_invalid_header_path():
+    return f"{Path(__file__).resolve().parent}/pcd/ascii_invalid_header.pcd"

@@ -5,6 +5,7 @@ import re
 import string
 import struct
 from enum import Enum
+from io import BufferedReader
 from pathlib import Path
 from typing import TYPE_CHECKING, BinaryIO, List, Literal, Optional, Sequence, Tuple, Union
 
@@ -171,7 +172,7 @@ class MetaData(BaseModel):
         return np.dtype([x for x in zip(field_names, np_types)])
 
 
-def _parse_pc_data(fp: BinaryIO, metadata: MetaData) -> npt.NDArray:
+def _parse_pc_data(fp: BufferedReader, metadata: MetaData) -> npt.NDArray:
     dtype = metadata.build_dtype()
 
     if metadata.points > 0:
@@ -217,13 +218,15 @@ class PointCloud:
         self.pc_data = pc_data
 
     @staticmethod
-    def from_fileobj(fp: BinaryIO) -> PointCloud:
+    def from_fileobj(fp: BufferedReader) -> PointCloud:
         lines: List[str] = []
-        while True:
-            line = fp.readline().strip()
-            lines.append(line.decode(encoding="utf-8") if isinstance(line, bytes) else line)
+        for bline in fp:
+            if (line := bline.decode(encoding="utf-8").strip()).startswith("#") or not line:
+                continue
 
-            if lines[-1].startswith("DATA"):
+            lines.append(line)
+
+            if line.startswith("DATA") or len(lines) >= 10:
                 break
 
         metadata = MetaData.parse_header(lines)
