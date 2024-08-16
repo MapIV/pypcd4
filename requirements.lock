@@ -14,9 +14,9 @@ annotated-types==0.7.0
     # via pydantic
 numpy==2.0.1
     # via pypcd4
-pydantic==2.6.4
+pydantic==2.8.2
     # via pypcd4
-pydantic-core==2.16.3
+pydantic-core==2.20.1
     # via pydantic
 python-lzf==0.2.6
     # via pypcd4
