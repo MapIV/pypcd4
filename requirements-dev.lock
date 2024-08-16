@@ -6,11 +6,13 @@
 #   features: []
 #   all-features: false
 #   with-sources: false
+#   generate-hashes: false
+#   universal: false
 
 -e file:.
-annotated-types==0.6.0
+annotated-types==0.7.0
     # via pydantic
-cachetools==5.3.2
+cachetools==5.4.0
     # via tox
 cfgv==3.4.0
     # via pre-commit
@@ -18,60 +20,58 @@ chardet==5.2.0
     # via tox
 colorama==0.4.6
     # via tox
-coverage==7.3.2
+coverage==7.6.1
     # via pytest-cov
 distlib==0.3.8
     # via virtualenv
-filelock==3.13.1
+filelock==3.15.4
     # via tox
     # via virtualenv
-identify==2.5.36
+identify==2.6.0
     # via pre-commit
 iniconfig==2.0.0
     # via pytest
-mypy==1.7.1
+mypy==1.11.1
 mypy-extensions==1.0.0
     # via mypy
-nodeenv==1.8.0
+nodeenv==1.9.1
     # via pre-commit
-numpy==1.24.4
+numpy==2.0.1
     # via pypcd4
-packaging==23.2
+packaging==24.1
     # via pyproject-api
     # via pytest
     # via setuptools-scm
     # via tox
-platformdirs==4.1.0
+platformdirs==4.2.2
     # via tox
     # via virtualenv
-pluggy==1.3.0
+pluggy==1.5.0
     # via pytest
     # via tox
-pre-commit==3.7.0
+pre-commit==3.8.0
 pydantic==2.6.4
     # via pypcd4
 pydantic-core==2.16.3
     # via pydantic
-pyproject-api==1.6.1
+pyproject-api==1.7.1
     # via tox
-pytest==7.4.3
+pytest==8.3.2
     # via pytest-cov
-pytest-cov==4.1.0
-python-lzf==0.2.4
+pytest-cov==5.0.0
+python-lzf==0.2.6
     # via pypcd4
-pyyaml==6.0.1
+pyyaml==6.0.2
     # via pre-commit
-ruff==0.3.4
-setuptools==69.0.2
-    # via nodeenv
+ruff==0.6.1
+setuptools==72.2.0
     # via setuptools-scm
-setuptools-scm==8.0.4
-tox==4.11.4
-typing-extensions==4.9.0
+setuptools-scm==8.1.0
+tox==4.18.0
+typing-extensions==4.12.2
     # via mypy
     # via pydantic
     # via pydantic-core
-    # via setuptools-scm
-virtualenv==20.25.0
+virtualenv==20.26.3
     # via pre-commit
     # via tox
