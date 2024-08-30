@@ -6,6 +6,7 @@ import string
 import struct
 from enum import Enum
 from io import BufferedReader
+from io import BytesIO as sio
 from pathlib import Path
 from typing import TYPE_CHECKING, BinaryIO, List, Literal, Optional, Sequence, Tuple, Union
 
@@ -216,6 +217,11 @@ class PointCloud:
     def __init__(self, metadata: MetaData, pc_data: npt.NDArray) -> None:
         self.metadata = metadata
         self.pc_data = pc_data
+
+    @staticmethod
+    def from_buffer(bytes: bytes) -> PointCloud:
+        fileobj = sio(bytes)
+        return PointCloud.from_fileobj(fileobj)
 
     @staticmethod
     def from_fileobj(fp: BufferedReader) -> PointCloud:
