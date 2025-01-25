@@ -619,7 +619,8 @@ class PointCloud:
         fields = []
         itemsize = 0
         row_step = 0
-        for i, (field, type_, count) in enumerate(zip(self.fields, self.types, self.counts)):
+        offset = 0
+        for field, type_, count in zip(self.fields, self.types, self.counts):
             type_ = np.dtype(type_)
 
             itemsize += type_.itemsize
@@ -628,11 +629,12 @@ class PointCloud:
             fields.append(
                 PointField(
                     name=field,
-                    offset=i * type_.itemsize,
+                    offset=offset,
                     datatype=NPTYPE_TO_PFTYPE[type_],
                     count=count,
                 )
             )
+            offset += type_.itemsize * count
 
         data = self.pc_data.tobytes()
 
