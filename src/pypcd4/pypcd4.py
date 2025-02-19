@@ -565,7 +565,9 @@ class PointCloud:
     def from_list(pcs: List[PointCloud]) -> PointCloud:
         if not all(pc.fields == pcs[0].fields and pc.types == pcs[0].types for pc in pcs):
             raise ValueError("from_list: All PointClouds must have the same fields and types")
-        return PointCloud.from_points(np.concatenate([pc.numpy() for pc in pcs]), pcs[0].fields, pcs[0].types)
+        return PointCloud.from_points(
+            np.concatenate([pc.numpy() for pc in pcs]), pcs[0].fields, pcs[0].types
+        )
 
     @staticmethod
     def from_msg(msg: sensor_msgs__msg__PointCloud2) -> PointCloud:
