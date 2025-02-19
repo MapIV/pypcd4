@@ -8,18 +8,26 @@
 
 ## Table of Contents
 
-* [Description](#description)
-* [Installation](#installation)
-* [Usage](#usage)
-  * [Importing pypcd4](#getting-started)
-  * [Loading PCD File](#working-with-pcd-files)
-  * [Converting to NumPy Array](#converting-between-pointcloud-and-numpy-array)
-  * [Converting to ROS Message](#working-with-ros-pointcloud2-messages)
-  * [Concatenating PointClouds](#concatenating-two-pointclouds)
-  * [Filtering PointClouds](#filtering-a-pointcloud)
-  * [Saving Your Work](#saving-your-work)
-* [Contributing](#contributing)
-* [License](#license)
+- [pypcd4](#pypcd4)
+  - [Table of Contents](#table-of-contents)
+  - [Description](#description)
+  - [Installation](#installation)
+  - [Usage](#usage)
+    - [Getting Started](#getting-started)
+    - [Working with .pcd Files](#working-with-pcd-files)
+    - [Converting Between PointCloud and NumPy Array](#converting-between-pointcloud-and-numpy-array)
+      - [Creating Custom Conversion Methods](#creating-custom-conversion-methods)
+    - [Working with ROS PointCloud2 Messages](#working-with-ros-pointcloud2-messages)
+    - [Concatenating Two PointClouds](#concatenating-two-pointclouds)
+    - [Filtering a PointCloud](#filtering-a-pointcloud)
+      - [Using a Slice](#using-a-slice)
+      - [Using a Boolean Mask](#using-a-boolean-mask)
+      - [Using Field Names](#using-field-names)
+    - [Saving Your Work](#saving-your-work)
+  - [Contributing](#contributing)
+    - [Using Rye (Recommended)](#using-rye-recommended)
+    - [Using pip](#using-pip)
+  - [License](#license)
 
 ## Description
 
@@ -105,7 +113,7 @@ pc = PointCloud.from_points(array, fields, types)
 
 ### Working with ROS PointCloud2 Messages
 
-You can convert a ROS PointCloud2 Message to a PointCloud and vice versa:
+You can convert a ROS PointCloud2 Message to a PointCloud and vice versa. This requires ROS installed and sourced, or [rosbags](https://ternaris.gitlab.io/rosbags/index.html) to be installed. To publish the converted message, ROS is required:
 
 ```python
 def callback(in_msg: sensor_msgs.msg.PointCloud2):
@@ -118,6 +126,7 @@ def callback(in_msg: sensor_msgs.msg.PointCloud2):
     # Convert PointCloud to ROS PointCloud2 Message with the input message header
     out_msg = pc.to_msg(in_msg.header)
 
+    # Publish using ROS (or e.g. write to a rosbag)
     publisher.publish(out_msg)
 ```
 

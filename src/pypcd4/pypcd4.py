@@ -324,7 +324,7 @@ class PointCloud:
         num_fields = points.shape[1] if isinstance(points, np.ndarray) else len(points)
         if num_fields != len(fields):
             raise ValueError(
-                f"`points` must have {len(fields)} fields {fields}, " f"but got {num_fields} fields"
+                f"`points` must have {len(fields)} fields {fields}, but got {num_fields} fields"
             )
 
         if count is None:
@@ -606,15 +606,33 @@ class PointCloud:
         Returns:
             The ROS/ROS 2 sensor_msgs/PointCloud2 message
         """
-
+        ROS_MSG_AVAILABLE = False
         try:
+            from builtin_interfaces.msg import Time
             from sensor_msgs.msg import PointCloud2, PointField
             from std_msgs.msg import Header
+
+            ROS_MSG_AVAILABLE = True
         except ImportError:
+            pass
+        try:
+            from rosbags.typesys.stores.latest import builtin_interfaces__msg__Time as Time
+            from rosbags.typesys.stores.latest import sensor_msgs__msg__PointCloud2 as PointCloud2
+            from rosbags.typesys.stores.latest import sensor_msgs__msg__PointField as PointField
+            from rosbags.typesys.stores.latest import std_msgs__msg__Header as Header
+
+            ROS_MSG_AVAILABLE = True
+        except ImportError:
+            pass
+
+        if not ROS_MSG_AVAILABLE:
             raise ImportError(
-                "The PointCloud.to_msg() method requires an additional ROS/ROS 2 sensor_msg module."
-                " Please install it according to the official installation guide."
-            ) from None
+                "The PointCloud.to_msg() method requires ROS sensor_msgs or rosbags installed.\n"
+                "Please install:\n"
+                "  - ROS/ROS2 as appropriate (check official documentation), or\n"
+                "  - rosbags via `pip install rosbags`. \n"
+                "    Rosbags can be used to write to bags but not .publish(msg)"
+            )
 
         fields = []
         itemsize = 0
@@ -639,7 +657,7 @@ class PointCloud:
         data = self.pc_data.tobytes()
 
         msg = PointCloud2(
-            header=Header() if header is None else header,
+            header=Header(stamp=Time(sec=0, nanosec=0), frame_id="") if header is None else header,
             height=1,
             width=self.points,
             is_dense=False,

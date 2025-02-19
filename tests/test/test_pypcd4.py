@@ -934,3 +934,19 @@ def test_pointcloud_getitem_with_field_names():
     # Cannot filter by fields names since the field name "a" is invalid
     with pytest.raises(ValueError):
         pc[("x", "y", "a")]
+        
+def test_pointcloud_tomsg():
+    in_points = np.random.randint(0, 1000, (100, 3))
+    fields = ("x", "y", "z")
+    types = (np.float32, np.int8, np.uint32)
+    pc = PointCloud.from_points(in_points, fields, types)
+
+    try:
+        msg = pc.to_msg()
+    except ImportError:
+        pytest.skip("ROS or rosbags is not installed")
+    pc2 = PointCloud.from_msg(msg)
+    assert np.allclose(pc2.numpy(), pc.numpy())
+    assert pc2.fields == pc.fields
+    assert pc2.types == pc.types
+    assert pc2.points == pc.points
