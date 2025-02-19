@@ -562,6 +562,14 @@ class PointCloud:
         return PointCloud.from_points(points, fields, types)
 
     @staticmethod
+    def from_list(pcs: List[PointCloud]) -> PointCloud:
+        if not all(pc.fields == pcs[0].fields and pc.types == pcs[0].types for pc in pcs):
+            raise ValueError("from_list: All PointClouds must have the same fields and types")
+        return PointCloud.from_points(
+            np.concatenate([pc.numpy() for pc in pcs]), pcs[0].fields, pcs[0].types
+        )
+
+    @staticmethod
     def from_msg(msg: sensor_msgs__msg__PointCloud2) -> PointCloud:
         """Create a PointCloud from a ROS/ROS 2 sensor_msgs.msg.PointCloud2 message
 
@@ -960,12 +968,12 @@ class PointCloud:
 
         if self.fields != other.fields:
             raise ValueError(
-                "Can't concatenate point clouds with different fields. "
+                "add: Can't concatenate point clouds with different fields. "
                 f"({self.fields} vs. {other.fields})"
             )
         if self.types != other.types:
             raise ValueError(
-                "Can't concatenate point clouds with different types. "
+                "add: Can't concatenate point clouds with different types. "
                 f"({self.types} vs. {other.types})"
             )
 
