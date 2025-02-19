@@ -18,7 +18,7 @@
     - [Converting Between PointCloud and NumPy Array](#converting-between-pointcloud-and-numpy-array)
       - [Creating Custom Conversion Methods](#creating-custom-conversion-methods)
     - [Working with ROS PointCloud2 Messages](#working-with-ros-pointcloud2-messages)
-    - [Concatenating Two PointClouds](#concatenating-two-pointclouds)
+    - [Concatenating PointClouds](#concatenating-pointclouds)
     - [Filtering a PointCloud](#filtering-a-pointcloud)
       - [Using a Slice](#using-a-slice)
       - [Using a Boolean Mask](#using-a-boolean-mask)
@@ -130,10 +130,10 @@ def callback(in_msg: sensor_msgs.msg.PointCloud2):
     publisher.publish(out_msg)
 ```
 
-### Concatenating Two PointClouds
+### Concatenating PointClouds
 
-The `pypcd4` supports concatenating two `PointCloud` objects together using the `+` operator.
-This can be very useful when you want to merge two point clouds into one.
+The `pypcd4` supports concatenating `PointCloud` objects together using the `+` operator.
+This can be useful when you want to merge two point clouds into one.
 
 Here's how you can use it:
 
@@ -145,7 +145,17 @@ pc2: PointCloud = PointCloud.from_path("xyzi2.pcd")
 pc3: PointCloud = pc1 + pc2
 ```
 
-Please note that the two PointCloud objects must have the same fields and types. If they don’t, a `ValueError` will be raised.
+Concatenating many PointClouds in sequence can become slow, especially for large point counts. Using `PointCloud.from_list()` will be faster for those use cases:
+
+```python
+pc_list = []
+for i in range(10):
+    pc_list.append(PointCloud.from_path(f"xyzi{i}.pcd"))
+
+pc: PointCloud = PointCloud.from_list(pc_list)
+```
+
+Please note that to concatenate PointCloud objects, they must have the exact same fields and types. If they don’t, a `ValueError` will be raised.
 
 ### Filtering a PointCloud
 
