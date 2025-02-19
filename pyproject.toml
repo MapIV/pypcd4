@@ -37,7 +37,8 @@ urls.Tracker = "https://github.com/MapIV/pypcd4/issues"
 dev = ["ruff", "mypy", "setuptools-scm"]
 
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
+# pinned hatchling version because https://github.com/astral-sh/rye/issues/1446
+requires = ["hatchling==1.26.3", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [tool.rye]
