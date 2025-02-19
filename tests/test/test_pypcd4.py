@@ -950,3 +950,15 @@ def test_pointcloud_tomsg():
     assert pc2.fields == pc.fields
     assert pc2.types == pc.types
     assert pc2.points == pc.points
+
+def test_list_pointcloud():
+    in_points = np.random.randint(0, 1000, (100, 3))
+    fields = ("x", "y", "z")
+    types = (np.float32, np.float32, np.float32)
+    pc = PointCloud.from_points(in_points, fields, types)
+    num_pcs = 3
+    pc_list = [pc] * num_pcs
+    concatenated_pc = PointCloud.from_list(pc_list)
+    assert concatenated_pc.points == pc.points * num_pcs
+    assert concatenated_pc.fields == pc.fields
+    assert concatenated_pc.types == pc.types
