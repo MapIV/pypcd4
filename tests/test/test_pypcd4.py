@@ -962,3 +962,8 @@ def test_list_pointcloud():
     assert concatenated_pc.points == pc.points * num_pcs
     assert concatenated_pc.fields == pc.fields
     assert concatenated_pc.types == pc.types
+    
+if __name__ == "__main__":
+    print("Testing PointCloud msg functionality...")
+    test_pointcloud_tomsg()
+    print("Msg test passed!")
