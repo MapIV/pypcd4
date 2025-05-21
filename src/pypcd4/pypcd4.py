@@ -616,32 +616,44 @@ class PointCloud:
         """
         ROS_MSG_AVAILABLE = False
         try:
-            from builtin_interfaces.msg import Time
             from sensor_msgs.msg import PointCloud2, PointField
             from std_msgs.msg import Header
 
             ROS_MSG_AVAILABLE = True
-        except ImportError:
-            pass
-        try:
-            from rosbags.typesys.stores.latest import builtin_interfaces__msg__Time as Time
-            from rosbags.typesys.stores.latest import sensor_msgs__msg__PointCloud2 as PointCloud2
-            from rosbags.typesys.stores.latest import sensor_msgs__msg__PointField as PointField
-            from rosbags.typesys.stores.latest import std_msgs__msg__Header as Header
-
-            ROS_MSG_AVAILABLE = True
+            try:
+                from builtin_interfaces.msg import Time  # ROS2
+            except ImportError:
+                from std_msgs.msg import Time  # ROS1
         except ImportError:
             pass
 
         if not ROS_MSG_AVAILABLE:
-            raise ImportError(
-                "The PointCloud.to_msg() method requires ROS sensor_msgs or rosbags installed.\n"
-                "Please install:\n"
-                "  - ROS/ROS2 as appropriate (check official documentation), or\n"
-                "  - rosbags via `pip install rosbags`. \n"
-                "    Rosbags can be used to write to bags but not .publish(msg)"
-            )
+            try:
+                # Fallback to rosbags
+                from rosbags.typesys.stores.latest import (
+                    builtin_interfaces__msg__Time as Time,
+                )
+                from rosbags.typesys.stores.latest import (
+                    sensor_msgs__msg__PointCloud2 as PointCloud2,
+                )
+                from rosbags.typesys.stores.latest import (
+                    sensor_msgs__msg__PointField as PointField,
+                )
+                from rosbags.typesys.stores.latest import (
+                    std_msgs__msg__Header as Header,
+                )
 
+                ROS_MSG_AVAILABLE = True
+            except ImportError:
+                pass
+
+        if not ROS_MSG_AVAILABLE:
+            raise ImportError(
+                "The PointCloud.to_msg() method requires ROS `sensor_msgs` or the `rosbags` pkg.\n"
+                "Please install either:\n"
+                "  - ROS/ROS2 (check official documentation), or\n"
+                "  - rosbags via `pip install rosbags`."
+            )
         fields = []
         itemsize = 0
         row_step = 0
@@ -662,10 +674,16 @@ class PointCloud:
             )
             offset += type_.itemsize * count
 
-        data = self.pc_data.tobytes()
+        data = self.pc_data.reshape(-1).view(np.uint8)
+
+        if header is None:
+            try:
+                header = Header(stamp=Time(sec=0, nanosec=0), frame_id="")
+            except (TypeError, AttributeError):
+                header = Header(stamp=Time(0), frame_id="", seq=0)
 
         msg = PointCloud2(
-            header=Header(stamp=Time(sec=0, nanosec=0), frame_id="") if header is None else header,
+            header=header,
             height=1,
             width=self.points,
             is_dense=False,
