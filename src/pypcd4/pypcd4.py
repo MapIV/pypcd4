@@ -924,7 +924,9 @@ class PointCloud:
         )
 
         if (compressed := lzf.compress(uncompressed)) is None:
-            compressed = uncompressed
+            fp.seek(0)
+            self.save(fp, encoding=Encoding.BINARY)
+            return
 
         fp.write(struct.pack("II", len(compressed), len(uncompressed)))
         fp.write(compressed)
@@ -941,7 +943,7 @@ class PointCloud:
 
         is_open = False
         if isinstance(fp, Path):
-            fp = fp.open("wb")
+            fp = fp.open(mode="wb")
             is_open = True
         elif isinstance(fp, str):
             fp = open(fp, mode="wb")
