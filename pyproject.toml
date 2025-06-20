@@ -69,11 +69,6 @@ lint = { chain = [
 [tool.hatch.metadata]
 allow-direct-references = true
 
-[tool.hatch.build.targets.wheel]
-include = [
-  "src/pypcd4/py.typed",
-]
-
 [tool.hatch]
 version.source = "vcs"
 build.hooks.vcs.version-file = "src/pypcd4/_version.py"
