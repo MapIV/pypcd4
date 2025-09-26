@@ -844,6 +844,8 @@ class PointCloud:
         :param transform_matrix: 4*4 matrix
 
         """
+        if transform_matrix.shape != (4, 4):
+            raise ValueError(f"Expected 4x4 transformation matrix, got {transform_matrix.shape}")
         xyz_pcd = self.numpy(('x', 'y', 'z'))
         points_quantic = np.column_stack(
             (xyz_pcd, np.ones(xyz_pcd.shape[0])))
