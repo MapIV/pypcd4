@@ -5,8 +5,8 @@ description = "Read and write PCL .pcd files in python"
 authors = [{ name = "urasakikeisuke", email = "keisuke.urasaki@map4.jp" }]
 dependencies = [
     "numpy>=1.21.0",
-    "python-lzf>=0.2.4",
     "pydantic >=1.10.8, <3.0.0",
+    "python-neo-lzf>=0.3.0",
 ]
 readme = "README.md"
 requires-python = ">= 3.8.2"
