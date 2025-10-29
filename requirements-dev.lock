@@ -59,7 +59,7 @@ pyproject-api==1.7.1
 pytest==8.3.2
     # via pytest-cov
 pytest-cov==5.0.0
-python-lzf==0.2.6
+python-neo-lzf==0.3.2
     # via pypcd4
 pyyaml==6.0.2
     # via pre-commit

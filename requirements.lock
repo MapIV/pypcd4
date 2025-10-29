@@ -18,7 +18,7 @@ pydantic==2.8.2
     # via pypcd4
 pydantic-core==2.20.1
     # via pydantic
-python-lzf==0.2.6
+python-neo-lzf==0.3.2
     # via pypcd4
 typing-extensions==4.12.2
     # via pydantic
