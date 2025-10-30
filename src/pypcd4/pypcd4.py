@@ -884,6 +884,22 @@ class PointCloud:
 
         return np.vstack(_stack).T
 
+    def transform(self, transform_matrix: npt.NDArray) -> None:
+        """Transfer the point cloud to the target coordinate system
+
+        :param transform_matrix: 4*4 matrix
+
+        """
+        if transform_matrix.shape != (4, 4):
+            raise ValueError(f"Expected 4x4 transformation matrix, got {transform_matrix.shape}")
+        xyz_pcd = self.numpy(('x', 'y', 'z'))
+        points_quantic = np.column_stack(
+            (xyz_pcd, np.ones(xyz_pcd.shape[0])))
+        transformed_points = np.dot(transform_matrix, points_quantic.T).T
+        self.pc_data['x'] = transformed_points[:, 0]
+        self.pc_data['y'] = transformed_points[:, 1]
+        self.pc_data['z'] = transformed_points[:, 2]
+
     def _save_as_ascii(self, fp: BinaryIO) -> None:
         """Saves point cloud to a file as a ascii
 
