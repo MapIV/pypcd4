@@ -6,11 +6,16 @@ authors = [{ name = "urasakikeisuke", email = "keisuke.urasaki@map4.jp" }]
 dependencies = [
     "numpy>=1.21.0",
     "pydantic >=1.10.8, <3.0.0",
-    # python-neo-lzf lacks pre-built wheels for aarch64 (Arm64).
-    # To enable installation on Arm platforms without requiring compilation tools,
-    # we switch to python-lzf for aarch64/arm64 environments.
-    "python-neo-lzf>=0.3.0; platform_machine != 'aarch64' and platform_machine != 'arm64'",
-    "python-lzf; platform_machine == 'aarch64' or platform_machine == 'arm64'",
+
+    # NOTE: `python-neo-lzf` currently lacks pre-built wheels for Linux aarch64.
+    # To avoid compilation errors on Linux ARM environments, we use `python-lzf` as a fallback.
+    # macOS ARM64 (Apple Silicon) is supported by `python-neo-lzf` (Universal2), so it is not affected.
+
+    # 1. Fallback: Use `python-lzf` ONLY on Linux ARM64.
+    "python-lzf; sys_platform == 'linux' and (platform_machine == 'aarch64' or platform_machine == 'arm64')",
+
+    # 2. Standard: Use `python-neo-lzf` on all other platforms (macOS, Windows, x86_64 Linux, etc.).
+    "python-neo-lzf>=0.3.0; sys_platform != 'linux' or (platform_machine != 'aarch64' and platform_machine != 'arm64')",
 ]
 readme = "README.md"
 requires-python = ">= 3.8.2"
