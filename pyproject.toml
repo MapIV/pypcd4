@@ -34,17 +34,12 @@ urls."Release Notes" = "https://github.com/MapIV/pypcd4/releases"
 urls.Source = "https://github.com/MapIV/pypcd4"
 urls.Tracker = "https://github.com/MapIV/pypcd4/issues"
 
-[project.optional-dependencies]
-dev = ["ruff", "mypy", "setuptools-scm"]
-
 [build-system]
-# pinned hatchling version because https://github.com/astral-sh/rye/issues/1446
-requires = ["hatchling==1.26.3", "hatch-vcs"]
+requires = ["hatchling>=1.27", "hatch-vcs"]
 build-backend = "hatchling.build"
 
-[tool.rye]
-managed = true
-dev-dependencies = [
+[dependency-groups]
+dev = [
     "mypy>=1.5.1",
     "setuptools-scm>=7.1.0",
     "pre-commit>=3.4.0",
@@ -53,18 +48,6 @@ dev-dependencies = [
     "pytest-cov>=4.1.0",
     "ruff>=0.3.4",
 ]
-
-[tool.rye.scripts]
-lint = { chain = [
-    "lint:ruff-lint",
-    "lint:ruff-format",
-    "lint:mypy",
-    "lint:tox",
-] }
-"lint:ruff-lint" = "ruff check --fix src"
-"lint:ruff-format" = "ruff format src"
-"lint:mypy" = "mypy src"
-"lint:tox" = "tox"
 
 [tool.hatch.metadata]
 allow-direct-references = true

@@ -25,7 +25,7 @@
       - [Using Field Names](#using-field-names)
     - [Saving Your Work](#saving-your-work)
   - [Contributing](#contributing)
-    - [Using Rye (Recommended)](#using-rye-recommended)
+    - [Using uv (Recommended)](#using-uv-recommended)
     - [Using pip](#using-pip)
   - [License](#license)
 
@@ -220,13 +220,16 @@ pc.save("nice_point_cloud.pcd")
 We are always looking for contributors. If you are interested in contributing,
 please run the lint and test before submitting a pull request:
 
-### Using Rye (Recommended)
+### Using uv (Recommended)
 
-Just run the following command:
+Just run the following commands:
 
 ```bash
-rye sync
-rye run lint
+uv sync
+uv run ruff check --fix src
+uv run ruff format src
+uv run mypy src
+uv run tox
 ```
 
 ### Using pip
