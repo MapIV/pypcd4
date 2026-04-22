@@ -9,7 +9,7 @@ dependencies = [
     "python-neo-lzf>=0.3.5",
 ]
 readme = "README.md"
-requires-python = ">= 3.8.2"
+requires-python = ">= 3.8"
 license = { file = "LICENSE.txt" }
 classifiers = [
     "Development Status :: 5 - Production/Stable",
