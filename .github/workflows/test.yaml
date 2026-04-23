@@ -25,23 +25,18 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Set up Rye
-        uses: eifinger/setup-rye@v2
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Sync with Rye
-        run: rye sync
+      - name: Install dependencies
+        run: uv sync --all-extras --dev --python ${{ matrix.python-version }}
       - name: Run Ruff check
-        run: rye run ruff check src
+        run: uv run ruff check src
       - name: Run Ruff format
-        run: rye run ruff format --check src
+        run: uv run ruff format --check src
       - name: Run Mypy
-        run: rye run mypy src
+        run: uv run mypy src
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -56,21 +51,16 @@ jobs:
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Set up Rye
-        uses: eifinger/setup-rye@v2
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Sync with Rye
-        run: rye sync
+      - name: Install dependencies
+        run: uv sync --all-extras --dev --python ${{ matrix.python-version }}
       - name: Run pytest
         run: |
           set -o pipefail
-          rye run pytest --junitxml=pytest.xml --cov-report=term-missing --cov=src tests/ | tee pytest-coverage.txt
+          uv run pytest --junitxml=pytest.xml --cov-report=term-missing --cov=src tests/ | tee pytest-coverage.txt
       - name: Comment coverage report in PR
         uses: MishaKav/pytest-coverage-comment@v1.1.51
         with:
