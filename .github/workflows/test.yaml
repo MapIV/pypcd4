@@ -10,6 +10,13 @@ on:
       - reopened
       - synchronize
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -75,6 +82,8 @@ jobs:
   coverage-comment:
     needs: test
     if: ${{ !cancelled() }}
+    permissions:
+      pull-requests: write
     runs-on: ubuntu-latest
     steps:
       - name: Download coverage artifacts
