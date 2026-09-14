@@ -714,9 +714,7 @@ class PointCloud:
             (rgb_u32[:, 0] << 16) | (rgb_u32[:, 1] << 8) | (rgb_u32[:, 2] << 0),
             dtype=np.uint32,
         )
-        rgb_u32.dtype = np.float32  # type: ignore
-
-        return rgb_u32
+        return rgb_u32.view(np.float32)
 
     @staticmethod
     def decode_rgb(rgb: npt.NDArray) -> npt.NDArray:
@@ -725,8 +723,7 @@ class PointCloud:
         Nx3 uint8 array with RGB values
         """
 
-        rgb = rgb.copy()
-        rgb.dtype = np.uint32  # type: ignore
+        rgb = rgb.view(np.uint32)
 
         r = np.asarray((rgb >> 16) & 255, dtype=np.uint8).reshape(-1, 1)
         g = np.asarray((rgb >> 8) & 255, dtype=np.uint8).reshape(-1, 1)
