@@ -23,7 +23,7 @@ jobs:
         fetch-depth: 0
 
     - name: Setup jq
-      uses: dcarbone/install-jq-action@v2
+      uses: dcarbone/install-jq-action@v4
 
     - name: Update CONTRIBUTORS.md
       env:
