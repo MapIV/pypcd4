@@ -103,6 +103,6 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Comment coverage report in PR
-        uses: MishaKav/pytest-coverage-comment@v1.1.51
+        uses: MishaKav/pytest-coverage-comment@v1.12.2
         with:
           multiple-files: ${{ steps.build-list.outputs.multiple-files }}
