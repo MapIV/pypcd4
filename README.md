@@ -1,10 +1,10 @@
 # pypcd4
 
 [![Test](https://github.com/MapIV/pypcd4/actions/workflows/test.yaml/badge.svg)](https://github.com/MapIV/pypcd4/actions/workflows/test.yaml)
-![PyPI - Version](https://img.shields.io/pypi/v/pypcd4)
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pypcd4)
-![GitHub License](https://img.shields.io/github/license/MapIV/pypcd4)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/pypcd4)
+[![PyPI - Version](https://img.shields.io/pypi/v/pypcd4)](https://pypi.org/project/pypcd4/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pypcd4)](https://pypi.org/project/pypcd4/)
+[![GitHub License](https://img.shields.io/github/license/MapIV/pypcd4)](https://github.com/MapIV/pypcd4/blob/main/LICENSE.txt)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/pypcd4)](https://pypistats.org/packages/pypcd4)
 
 ## Table of Contents
 

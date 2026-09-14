@@ -71,7 +71,7 @@ jobs:
           set -o pipefail
           uv run pytest --junitxml=pytest.xml --cov-report=term-missing --cov=src tests/ | tee pytest-coverage.txt
       - name: Upload coverage artifact
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && github.event_name == 'pull_request' }}
         uses: actions/upload-artifact@v4
         with:
           name: pytest-coverage-${{ matrix.python-version }}
@@ -81,7 +81,7 @@ jobs:
           retention-days: 1
   coverage-comment:
     needs: test
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
     permissions:
       pull-requests: write
     runs-on: ubuntu-latest
