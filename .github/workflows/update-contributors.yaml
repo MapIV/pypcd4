@@ -5,8 +5,15 @@ on:
     - cron: '0 2 * * *' # Runs every day at 2am UTC
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   update:
+    permissions:
+      contents: write
+      pull-requests: write
+
     runs-on: ubuntu-latest
 
     steps:
@@ -19,16 +26,29 @@ jobs:
       uses: dcarbone/install-jq-action@v2
 
     - name: Update CONTRIBUTORS.md
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        echo "# Contributors" > CONTRIBUTORS.md
-        echo "" >> CONTRIBUTORS.md
-        p=1
-        while true; do
-          s=$(curl "https://api.github.com/repos/mapiv/pypcd4/contributors?page=$p") || break
-          [ "0" = $(echo $s | jq length) ] && break
-          echo $s | jq -r '.[] | "* [" + .login + "](" + .html_url + ")"';
-          p=$((p+1))
-        done | sort -f | tee -a CONTRIBUTORS.md
+        set -euo pipefail
+
+        tmp="$(mktemp)"
+        page=1
+        while :; do
+          response="$(curl -sf \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/mapiv/pypcd4/contributors?page=${page}&per_page=100")"
+          count="$(jq 'length' <<<"$response")"
+          [ "$count" -eq 0 ] && break
+          jq -r '.[] | "* [" + .login + "](" + .html_url + ")"' <<<"$response" >>"$tmp"
+          page=$((page + 1))
+        done
+
+        {
+          echo "# Contributors"
+          echo
+          sort -f "$tmp"
+        } | tee CONTRIBUTORS.md
 
     - name: Create Pull Request
       uses: peter-evans/create-pull-request@v6
