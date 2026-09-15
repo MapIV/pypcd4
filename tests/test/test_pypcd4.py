@@ -8,6 +8,12 @@ import numpy as np
 import pytest
 from pydantic import ValidationError
 from pypcd4 import Encoding, MetaData, PointCloud
+from pypcd4.pointcloud2 import (
+    builtin_interfaces__msg__Time,
+    sensor_msgs__msg__PointCloud2,
+    sensor_msgs__msg__PointField,
+    std_msgs__msg__Header,
+)
 
 
 def test_parse_pcd_header(pcd_header):
@@ -242,6 +248,9 @@ def test_load_xyzrgb_ascii_with_empty_points_pcd(xyzrgb_ascii_with_empty_points_
     assert pc.metadata.data == "ascii"
     assert pc.pc_data.dtype.names == pc.metadata.fields
     assert len(pc.pc_data) == pc.metadata.points
+    # pc_data must stay a 1-D structured array, matching PointCloud.from_points()
+    # with zero points, instead of the (0, len(fields)) shape it used to have.
+    assert pc.pc_data.shape == (0,)
 
 
 def test_load_xyzintensity_ascii_organized_pcd(xyzintensity_ascii_organized_path):
@@ -652,8 +661,7 @@ def test_encode_rgb():
     g = np.array([230, 230, 230])
     b = np.array([206, 206, 206])
 
-    expect = np.array((r << 16) | (g << 8) | (b << 0), np.uint32)
-    expect.dtype = np.float32
+    expect = np.array((r << 16) | (g << 8) | (b << 0), np.uint32).view(np.float32)
 
     output = PointCloud.encode_rgb((r, g, b))
 
@@ -665,8 +673,7 @@ def test_decode_rgb():
     g = np.array([230, 230, 230])
     b = np.array([206, 206, 206])
 
-    input = np.array((r << 16) | (g << 8) | (b << 0), np.uint32)
-    input.dtype = np.float32
+    input = np.array((r << 16) | (g << 8) | (b << 0), np.uint32).view(np.float32)
 
     expect = np.array([r, g, b], dtype=np.uint8)
     output = PointCloud.decode_rgb(input)
@@ -952,6 +959,64 @@ def test_pointcloud_getitem_with_field_names():
     # Cannot filter by fields names since the field name "a" is invalid
     with pytest.raises(ValueError):
         pc[("x", "y", "a")]
+
+
+def test_from_msg_with_multi_count_fields():
+    n = 5
+    points = np.random.rand(n, 3).astype(np.float32)
+    descriptors = np.random.rand(n, 4).astype(np.float32)
+    point_step = points.itemsize * 3 + descriptors.itemsize * 4
+
+    data = bytearray()
+    for i in range(n):
+        data += points[i].tobytes()
+        data += descriptors[i].tobytes()
+
+    msg = sensor_msgs__msg__PointCloud2(
+        header=std_msgs__msg__Header(
+            stamp=builtin_interfaces__msg__Time(sec=0, nanosec=0),
+            frame_id="map",
+        ),
+        height=1,
+        width=n,
+        fields=[
+            sensor_msgs__msg__PointField(
+                name="x", offset=0, datatype=sensor_msgs__msg__PointField.FLOAT32, count=1
+            ),
+            sensor_msgs__msg__PointField(
+                name="y", offset=4, datatype=sensor_msgs__msg__PointField.FLOAT32, count=1
+            ),
+            sensor_msgs__msg__PointField(
+                name="z", offset=8, datatype=sensor_msgs__msg__PointField.FLOAT32, count=1
+            ),
+            sensor_msgs__msg__PointField(
+                name="descriptor",
+                offset=12,
+                datatype=sensor_msgs__msg__PointField.FLOAT32,
+                count=4,
+            ),
+        ],
+        is_bigendian=False,
+        point_step=point_step,
+        row_step=point_step * n,
+        data=np.frombuffer(bytes(data), dtype=np.uint8),
+        is_dense=True,
+    )
+
+    pc = PointCloud.from_msg(msg)
+
+    assert pc.fields == (
+        "x",
+        "y",
+        "z",
+        "descriptor__0000",
+        "descriptor__0001",
+        "descriptor__0002",
+        "descriptor__0003",
+    )
+    assert pc.pc_data.dtype.itemsize == point_step
+    assert np.allclose(pc.numpy(("x", "y", "z")), points)
+
 
 def test_pointcloud_tomsg():
     in_points = np.random.randint(0, 1000, (100, 3))

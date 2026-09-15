@@ -130,12 +130,8 @@ class MetaData(BaseModel):
                 _header[key] = tuple(float(v) for v in value)
             else:
                 pass
-        try:
-            metadata = MetaData.model_validate(_header)  # type: ignore[attr-defined]
-        except AttributeError:
-            metadata = MetaData.parse_obj(_header)  # type: ignore[attr-defined]
 
-        return metadata
+        return _validate_metadata(_header)
 
     def compose_header(self, data: Optional[Encoding] = None) -> str:
         header: List[str] = []
@@ -172,6 +168,13 @@ class MetaData(BaseModel):
         return np.dtype([x for x in zip(field_names, np_types)])
 
 
+def _validate_metadata(data: dict) -> MetaData:
+    try:
+        return MetaData.model_validate(data)  # type: ignore[attr-defined]
+    except AttributeError:
+        return MetaData.parse_obj(data)  # type: ignore[attr-defined]
+
+
 def _parse_pc_data(fp: BufferedReader, metadata: MetaData) -> npt.NDArray:
     dtype = metadata.build_dtype()
 
@@ -199,7 +202,7 @@ def _parse_pc_data(fp: BufferedReader, metadata: MetaData) -> npt.NDArray:
                 pc_data[name] = np.frombuffer(buffer[offset : (offset + bytes)], dtype=dt)
                 offset += bytes
     else:
-        pc_data = np.empty((0, len(metadata.fields)), dtype)
+        pc_data = np.empty(0, dtype)
 
     return pc_data
 
@@ -338,32 +341,16 @@ class PointCloud:
 
         num_points = len(points) if isinstance(points, np.ndarray) else len(points[0])
 
-        try:
-            metadata = MetaData.model_validate(  # type: ignore[attr-defined]
-                {
-                    "fields": fields,
-                    "size": sizes,
-                    "type": pcd_types,
-                    "count": count,
-                    "width": num_points,
-                    "points": num_points,
-                }
-            )
-        except AttributeError:
-            metadata = MetaData.parse_obj(  # type: ignore[attr-defined]
-                {
-                    "fields": fields,
-                    "size": sizes,
-                    "type": pcd_types,
-                    "count": count,
-                    "width": num_points,
-                    "points": num_points,
-                    "height": 1,
-                    "version": "0.7",
-                    "viewpoint": (0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0),
-                    "data": Encoding.BINARY_COMPRESSED,
-                }
-            )
+        metadata = _validate_metadata(
+            {
+                "fields": fields,
+                "size": sizes,
+                "type": pcd_types,
+                "count": count,
+                "width": num_points,
+                "points": num_points,
+            }
+        )
 
         return PointCloud(metadata, _compose_pc_data(points, metadata))
 
@@ -581,7 +568,7 @@ class PointCloud:
         """
 
         pc_data = np.frombuffer(msg.data, build_dtype_from_msg(msg))
-        metadata = MetaData.model_validate(
+        metadata = _validate_metadata(
             {
                 "fields": pc_data.dtype.names,
                 "size": [

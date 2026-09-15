@@ -46,6 +46,7 @@ dev = [
     "pre-commit>=3.4.0",
     "pytest>=7.4.1",
     "tox>=4.11.1",
+    "tox-uv>=1.36.0; python_version >= '3.10'",
     "pytest-cov>=4.1.0",
     "ruff>=0.3.4",
 ]
@@ -71,7 +72,7 @@ indent-width = 4
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "PLR", "B", "ANN"]
-ignore = ["ANN101", "ANN102", "PLR2004"]
+ignore = ["PLR2004"]
 fixable = ["ALL"]
 unfixable = []
 
@@ -97,6 +98,7 @@ legacy_tox_ini = """
         py311
         py312
         py313
+        py314
 
     [testenv]
     deps = pytest
