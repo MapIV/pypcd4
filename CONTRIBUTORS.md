@@ -1,6 +1,6 @@
 # Contributors
 
-* [jacoblambert](https://github.com/jacoblambert)
+* [dependabot[bot]](https://github.com/apps/dependabot)
 * [renesat](https://github.com/renesat)
 * [tokuda99](https://github.com/tokuda99)
 * [urasakikeisuke](https://github.com/urasakikeisuke)
