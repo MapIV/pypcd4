@@ -91,8 +91,14 @@ def build_dtype_from_msg(msg: sensor_msgs__msg__PointCloud2) -> list[tuple[str, 
             dtypes.append((f"__{offset}", np.dtype("uint8")))
             offset += 1
 
-        dtypes.append((field.name, PFTYPE_TO_NPTYPE[field.datatype]))
-        offset += PFTYPE_SIZES[field.datatype]
+        if field.count == 1:
+            dtypes.append((field.name, PFTYPE_TO_NPTYPE[field.datatype]))
+        else:
+            dtypes.extend(
+                (f"{field.name}__{i:04d}", PFTYPE_TO_NPTYPE[field.datatype])
+                for i in range(field.count)
+            )
+        offset += PFTYPE_SIZES[field.datatype] * field.count
 
     while offset < msg.point_step:
         dtypes.append((f"__{offset}", np.dtype("uint8")))
