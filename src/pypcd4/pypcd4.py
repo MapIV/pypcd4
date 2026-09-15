@@ -137,7 +137,7 @@ class MetaData(BaseModel):
 
         return metadata
 
-    def compose_header(self) -> str:
+    def compose_header(self, data: Optional[Encoding] = None) -> str:
         header: List[str] = []
 
         header.append(f"VERSION {self.version}")
@@ -151,7 +151,7 @@ class MetaData(BaseModel):
         header.append(f"HEIGHT {self.height}")
         header.append(f"VIEWPOINT {' '.join([str(v) for v in self.viewpoint])}")
         header.append(f"POINTS {self.points}")
-        header.append(f"DATA {self.data.value}")
+        header.append(f"DATA {(data or self.data).value}")
 
         return "\n".join(header) + "\n"
 
@@ -936,8 +936,6 @@ class PointCloud:
             encoding (Encoding, optional): Encoding to use. Defaults to Encoding.BINARY_COMPRESSED.
         """
 
-        self.metadata.data = encoding
-
         is_open = False
         if isinstance(fp, Path):
             fp = fp.open(mode="wb")
@@ -947,7 +945,7 @@ class PointCloud:
             is_open = True
 
         try:
-            header = self.metadata.compose_header().encode()
+            header = self.metadata.compose_header(data=encoding).encode()
             fp.write(header)
 
             if self.metadata.points < 1:
