@@ -743,7 +743,7 @@ def test_save_as_ascii():
         assert pc2.fields == pc.fields
         assert pc2.types == pc.types
         assert pc2.points == pc.points
-        assert pc2.metadata.data == pc.metadata.data
+        assert pc2.metadata.data == Encoding.ASCII
 
 
 def test_save_as_binary():
@@ -763,7 +763,7 @@ def test_save_as_binary():
         assert pc2.fields == pc.fields
         assert pc2.types == pc.types
         assert pc2.points == pc.points
-        assert pc2.metadata.data == pc.metadata.data
+        assert pc2.metadata.data == Encoding.BINARY
 
 
 def test_save_as_binary_compressed():
@@ -783,7 +783,25 @@ def test_save_as_binary_compressed():
         assert pc2.fields == pc.fields
         assert pc2.types == pc.types
         assert pc2.points == pc.points
-        assert pc2.metadata.data == pc.metadata.data
+        assert pc2.metadata.data == Encoding.BINARY_COMPRESSED
+
+
+def test_save_as_binary_compressed_falls_back_without_mutating_metadata():
+    # A tiny point cloud is too small to compress, so save() falls back to a
+    # plain binary write internally. That fallback must not change what
+    # encoding the original PointCloud's own metadata reports.
+    pc = PointCloud.from_xyz_points(np.random.rand(1, 3).astype(np.float32))
+    assert pc.metadata.data == Encoding.BINARY_COMPRESSED
+
+    with TemporaryDirectory() as dirname:
+        path = dirname / Path("test.pcd")
+
+        pc.save(path, Encoding.BINARY_COMPRESSED)
+        assert pc.metadata.data == Encoding.BINARY_COMPRESSED
+
+        pc2 = PointCloud.from_path(path)
+        assert pc2.metadata.data == Encoding.BINARY
+        assert np.allclose(pc2.numpy(), pc.numpy())
 
 
 def test_save_with_empty_points():
@@ -823,7 +841,7 @@ def test_save_to_file_buffer():
         assert pc2.fields == pc.fields
         assert pc2.types == pc.types
         assert pc2.points == pc.points
-        assert pc2.metadata.data == pc.metadata.data
+        assert pc2.metadata.data == Encoding.BINARY
 
 
 def test_save_to_bytes_io():
@@ -841,7 +859,7 @@ def test_save_to_bytes_io():
     assert pc2.fields == pc.fields
     assert pc2.types == pc.types
     assert pc2.points == pc.points
-    assert pc2.metadata.data == pc.metadata.data
+    assert pc2.metadata.data == Encoding.BINARY
 
 
 def test_pointcloud_concatenation():
@@ -934,7 +952,7 @@ def test_pointcloud_getitem_with_field_names():
     # Cannot filter by fields names since the field name "a" is invalid
     with pytest.raises(ValueError):
         pc[("x", "y", "a")]
-        
+
 def test_pointcloud_tomsg():
     in_points = np.random.randint(0, 1000, (100, 3))
     fields = ("x", "y", "z")
@@ -962,7 +980,7 @@ def test_list_pointcloud():
     assert concatenated_pc.points == pc.points * num_pcs
     assert concatenated_pc.fields == pc.fields
     assert concatenated_pc.types == pc.types
-    
+
 if __name__ == "__main__":
     print("Testing PointCloud msg functionality...")
     test_pointcloud_tomsg()
