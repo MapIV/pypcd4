@@ -9,7 +9,7 @@ from io import BufferedReader
 from pathlib import Path
 from typing import TYPE_CHECKING, BinaryIO, List, Literal, Optional, Sequence, Tuple, Union, cast
 
-import lzf  # type: ignore
+import lzf
 import numpy as np
 import numpy.typing as npt
 from pydantic import BaseModel, NonNegativeInt, PositiveInt
@@ -21,8 +21,8 @@ from .pointcloud2 import (
 )
 
 if TYPE_CHECKING:
-    from sensor_msgs.msg import PointCloud2  # type: ignore
-    from std_msgs.msg import Header  # type: ignore
+    from sensor_msgs.msg import PointCloud2
+    from std_msgs.msg import Header
 
 PathLike = Union[str, Path]
 
@@ -168,11 +168,19 @@ class MetaData(BaseModel):
         return np.dtype([x for x in zip(field_names, np_types)])
 
 
+def _dtype_names(dtype: np.dtype) -> Tuple[str, ...]:
+    # `dtype.names` is None for non-structured dtypes, but every dtype this
+    # library builds (via MetaData.build_dtype() / build_dtype_from_msg())
+    # is structured, so this always holds.
+    assert dtype.names is not None
+    return dtype.names
+
+
 def _validate_metadata(data: dict) -> MetaData:
     try:
-        return MetaData.model_validate(data)  # type: ignore[attr-defined]
+        return MetaData.model_validate(data)
     except AttributeError:
-        return MetaData.parse_obj(data)  # type: ignore[attr-defined]
+        return MetaData.parse_obj(data)
 
 
 def _parse_pc_data(fp: BufferedReader, metadata: MetaData) -> npt.NDArray:
@@ -185,7 +193,7 @@ def _parse_pc_data(fp: BufferedReader, metadata: MetaData) -> npt.NDArray:
             buffer = fp.read(metadata.points * dtype.itemsize)
             pc_data = np.frombuffer(buffer, dtype)
         else:
-            compressed_size, uncompressed_size = struct.unpack("II", fp.read(8))  # type: ignore
+            compressed_size, uncompressed_size = struct.unpack("II", fp.read(8))
 
             buffer = lzf.decompress(fp.read(compressed_size), uncompressed_size)
             if (actual_size := len(buffer)) != uncompressed_size:
@@ -196,7 +204,7 @@ def _parse_pc_data(fp: BufferedReader, metadata: MetaData) -> npt.NDArray:
 
             offset = 0
             pc_data = np.zeros(metadata.points, dtype=dtype)
-            for name in dtype.names:  # type: ignore
+            for name in _dtype_names(dtype):
                 dt: np.dtype = dtype[name]
                 bytes = dt.itemsize * metadata.points
                 pc_data[name] = np.frombuffer(buffer[offset : (offset + bytes)], dtype=dt)
@@ -570,16 +578,16 @@ class PointCloud:
         pc_data = np.frombuffer(msg.data, build_dtype_from_msg(msg))
         metadata = _validate_metadata(
             {
-                "fields": pc_data.dtype.names,
+                "fields": _dtype_names(pc_data.dtype),
                 "size": [
                     NUMPY_TYPE_TO_PCD_TYPE[pc_data[name].dtype][1]
-                    for name in pc_data.dtype.names  # type: ignore[union-attr]
+                    for name in _dtype_names(pc_data.dtype)
                 ],
                 "type": [
                     NUMPY_TYPE_TO_PCD_TYPE[pc_data[name].dtype][0]
-                    for name in pc_data.dtype.names  # type: ignore[union-attr]
+                    for name in _dtype_names(pc_data.dtype)
                 ],
-                "count": [1] * len(pc_data.dtype.names),  # type: ignore[arg-type]
+                "count": [1] * len(_dtype_names(pc_data.dtype)),
                 "points": len(pc_data),
                 "width": msg.width,
                 "height": msg.height,
@@ -603,8 +611,8 @@ class PointCloud:
         """
         ROS_MSG_AVAILABLE = False
         try:
-            from sensor_msgs.msg import PointCloud2, PointField  # type: ignore
-            from std_msgs.msg import Header  # type: ignore
+            from sensor_msgs.msg import PointCloud2, PointField
+            from std_msgs.msg import Header
 
             ROS_MSG_AVAILABLE = True
             try:
@@ -617,16 +625,16 @@ class PointCloud:
         if not ROS_MSG_AVAILABLE:
             try:
                 # Fallback to rosbags
-                from rosbags.typesys.stores.latest import (  # type: ignore
+                from rosbags.typesys.stores.latest import (
                     builtin_interfaces__msg__Time as Time,
                 )
-                from rosbags.typesys.stores.latest import (  # type: ignore
+                from rosbags.typesys.stores.latest import (
                     sensor_msgs__msg__PointCloud2 as PointCloud2,
                 )
-                from rosbags.typesys.stores.latest import (  # type: ignore
+                from rosbags.typesys.stores.latest import (
                     sensor_msgs__msg__PointField as PointField,
                 )
-                from rosbags.typesys.stores.latest import (  # type: ignore
+                from rosbags.typesys.stores.latest import (
                     std_msgs__msg__Header as Header,
                 )
 
@@ -904,7 +912,7 @@ class PointCloud:
 
         uncompressed = b"".join(
             np.ascontiguousarray(self.pc_data[field]).tobytes()
-            for field in self.pc_data.dtype.names  # type: ignore
+            for field in _dtype_names(self.pc_data.dtype)
         )
 
         if (compressed := lzf.compress(uncompressed)) is None:
@@ -1025,8 +1033,7 @@ class PointCloud:
         types = self.types
         if isinstance(subscript, slice):
             points_list = tuple(
-                cast(npt.NDArray, self.pc_data[field][subscript])
-                for field in self.pc_data.dtype.names  # type: ignore[assignment,union-attr]
+                self.pc_data[field][subscript] for field in _dtype_names(self.pc_data.dtype)
             )
         elif isinstance(subscript, np.ndarray):
             mask = subscript.squeeze()
@@ -1034,8 +1041,7 @@ class PointCloud:
                 raise ValueError(f"Mask array must be 1-dimensional but got {mask.ndim}")
 
             points_list = tuple(
-                cast(npt.NDArray, self.pc_data[field][mask])
-                for field in self.pc_data.dtype.names  # type: ignore[assignment,union-attr]
+                self.pc_data[field][mask] for field in _dtype_names(self.pc_data.dtype)
             )
         elif isinstance(subscript, str) or all(isinstance(s, str) for s in cast(tuple, subscript)):
             if isinstance(subscript, str):
@@ -1046,7 +1052,7 @@ class PointCloud:
             if not np.isin(subscript, self.fields).all():
                 raise ValueError(f"Invalid field name(s): {subscript}")
 
-            points_list = tuple(cast(npt.NDArray, self.pc_data[field]) for field in subscript)
+            points_list = tuple(self.pc_data[field] for field in subscript)
             fields = tuple(subscript)
             types = tuple(self.pc_data[field].dtype for field in subscript)
         else:
