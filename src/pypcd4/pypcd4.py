@@ -168,6 +168,14 @@ class MetaData(BaseModel):
         return np.dtype([x for x in zip(field_names, np_types)])
 
 
+def _dtype_names(dtype: np.dtype) -> Tuple[str, ...]:
+    # `dtype.names` is None for non-structured dtypes, but every dtype this
+    # library builds (via MetaData.build_dtype() / build_dtype_from_msg())
+    # is structured, so this always holds.
+    assert dtype.names is not None
+    return dtype.names
+
+
 def _validate_metadata(data: dict) -> MetaData:
     try:
         return MetaData.model_validate(data)
@@ -196,7 +204,7 @@ def _parse_pc_data(fp: BufferedReader, metadata: MetaData) -> npt.NDArray:
 
             offset = 0
             pc_data = np.zeros(metadata.points, dtype=dtype)
-            for name in dtype.names:  # type: ignore
+            for name in _dtype_names(dtype):
                 dt: np.dtype = dtype[name]
                 bytes = dt.itemsize * metadata.points
                 pc_data[name] = np.frombuffer(buffer[offset : (offset + bytes)], dtype=dt)
@@ -570,16 +578,16 @@ class PointCloud:
         pc_data = np.frombuffer(msg.data, build_dtype_from_msg(msg))
         metadata = _validate_metadata(
             {
-                "fields": pc_data.dtype.names,
+                "fields": _dtype_names(pc_data.dtype),
                 "size": [
                     NUMPY_TYPE_TO_PCD_TYPE[pc_data[name].dtype][1]
-                    for name in pc_data.dtype.names  # type: ignore[union-attr]
+                    for name in _dtype_names(pc_data.dtype)
                 ],
                 "type": [
                     NUMPY_TYPE_TO_PCD_TYPE[pc_data[name].dtype][0]
-                    for name in pc_data.dtype.names  # type: ignore[union-attr]
+                    for name in _dtype_names(pc_data.dtype)
                 ],
-                "count": [1] * len(pc_data.dtype.names),  # type: ignore[arg-type]
+                "count": [1] * len(_dtype_names(pc_data.dtype)),
                 "points": len(pc_data),
                 "width": msg.width,
                 "height": msg.height,
@@ -904,7 +912,7 @@ class PointCloud:
 
         uncompressed = b"".join(
             np.ascontiguousarray(self.pc_data[field]).tobytes()
-            for field in self.pc_data.dtype.names  # type: ignore
+            for field in _dtype_names(self.pc_data.dtype)
         )
 
         if (compressed := lzf.compress(uncompressed)) is None:
@@ -1026,7 +1034,7 @@ class PointCloud:
         if isinstance(subscript, slice):
             points_list = tuple(
                 cast(npt.NDArray, self.pc_data[field][subscript])
-                for field in self.pc_data.dtype.names  # type: ignore[union-attr]
+                for field in _dtype_names(self.pc_data.dtype)
             )
         elif isinstance(subscript, np.ndarray):
             mask = subscript.squeeze()
@@ -1035,7 +1043,7 @@ class PointCloud:
 
             points_list = tuple(
                 cast(npt.NDArray, self.pc_data[field][mask])
-                for field in self.pc_data.dtype.names  # type: ignore[union-attr]
+                for field in _dtype_names(self.pc_data.dtype)
             )
         elif isinstance(subscript, str) or all(isinstance(s, str) for s in cast(tuple, subscript)):
             if isinstance(subscript, str):
