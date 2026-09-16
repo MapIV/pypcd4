@@ -1033,8 +1033,7 @@ class PointCloud:
         types = self.types
         if isinstance(subscript, slice):
             points_list = tuple(
-                cast(npt.NDArray, self.pc_data[field][subscript])
-                for field in _dtype_names(self.pc_data.dtype)
+                self.pc_data[field][subscript] for field in _dtype_names(self.pc_data.dtype)
             )
         elif isinstance(subscript, np.ndarray):
             mask = subscript.squeeze()
@@ -1042,8 +1041,7 @@ class PointCloud:
                 raise ValueError(f"Mask array must be 1-dimensional but got {mask.ndim}")
 
             points_list = tuple(
-                cast(npt.NDArray, self.pc_data[field][mask])
-                for field in _dtype_names(self.pc_data.dtype)
+                self.pc_data[field][mask] for field in _dtype_names(self.pc_data.dtype)
             )
         elif isinstance(subscript, str) or all(isinstance(s, str) for s in cast(tuple, subscript)):
             if isinstance(subscript, str):
@@ -1054,7 +1052,7 @@ class PointCloud:
             if not np.isin(subscript, self.fields).all():
                 raise ValueError(f"Invalid field name(s): {subscript}")
 
-            points_list = tuple(cast(npt.NDArray, self.pc_data[field]) for field in subscript)
+            points_list = tuple(self.pc_data[field] for field in subscript)
             fields = tuple(subscript)
             types = tuple(self.pc_data[field].dtype for field in subscript)
         else:

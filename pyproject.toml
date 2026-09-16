@@ -86,6 +86,7 @@ docstring-code-line-length = 60
 ignore_missing_imports = true
 check_untyped_defs = true
 warn_unused_ignores = true
+warn_redundant_casts = true
 
 [tool.tox]
 legacy_tox_ini = """
