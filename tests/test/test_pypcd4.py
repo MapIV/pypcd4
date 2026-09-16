@@ -898,6 +898,29 @@ def test_pointcloud_concatenation():
         pc + pc5
 
 
+def test_pointcloud_concatenation_metadata():
+    in_points = np.random.randint(0, 1000, (100, 3))
+    fields = ("x", "y", "z")
+    types = (np.float32, np.float32, np.float32)
+
+    pc = PointCloud.from_points(in_points, fields, types)
+    pc.metadata.viewpoint = (1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0)
+    pc.metadata.height = 5
+
+    # viewpoint carries over when both sides agree
+    pc2 = PointCloud.from_points(in_points, fields, types)
+    pc2.metadata.viewpoint = pc.metadata.viewpoint
+    result = pc + pc2
+    assert result.metadata.viewpoint == pc.metadata.viewpoint
+    assert result.metadata.height == 1
+
+    # viewpoint resets to the default when the two sides disagree
+    pc3 = PointCloud.from_points(in_points, fields, types)
+    result = pc + pc3
+    assert result.metadata.viewpoint == (0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+    assert result.metadata.height == 1
+
+
 def test_pointcloud_getitem_with_slice():
     in_points = np.random.randint(0, 1000, (100, 3))
     fields = ("x", "y", "z")
@@ -959,6 +982,38 @@ def test_pointcloud_getitem_with_field_names():
     # Cannot filter by fields names since the field name "a" is invalid
     with pytest.raises(ValueError):
         pc[("x", "y", "a")]
+
+
+def test_pointcloud_getitem_metadata():
+    in_points = np.random.randint(0, 1000, (100, 3))
+    fields = ("x", "y", "z")
+    types = (np.float32, np.float32, np.float32)
+    pc = PointCloud.from_points(in_points, fields, types)
+    pc.metadata.viewpoint = (1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0)
+    pc.metadata.height = 5
+    pc.metadata.data = Encoding.ASCII
+
+    # Slicing/masking a PointCloud returns points from the same scan, so
+    # viewpoint and encoding must carry over; height can't since an
+    # arbitrary subset isn't guaranteed to form a valid 2D grid.
+    sliced = pc[10:30]
+    assert sliced.metadata.viewpoint == pc.metadata.viewpoint
+    assert sliced.metadata.data == pc.metadata.data
+    assert sliced.metadata.height == 1
+
+    mask = pc.pc_data["x"] > 500
+    masked = pc[mask]
+    assert masked.metadata.viewpoint == pc.metadata.viewpoint
+    assert masked.metadata.data == pc.metadata.data
+    assert masked.metadata.height == 1
+
+    # Selecting by field name doesn't change which points exist, so height
+    # (and everything else) carries over unchanged too.
+    selected = pc[("x", "y")]
+    assert selected.metadata.viewpoint == pc.metadata.viewpoint
+    assert selected.metadata.data == pc.metadata.data
+    assert selected.metadata.height == pc.metadata.height
+    assert selected.points == pc.points
 
 
 def test_from_msg_with_multi_count_fields():
@@ -1045,6 +1100,31 @@ def test_list_pointcloud():
     assert concatenated_pc.points == pc.points * num_pcs
     assert concatenated_pc.fields == pc.fields
     assert concatenated_pc.types == pc.types
+
+
+def test_from_list_metadata():
+    in_points = np.random.randint(0, 1000, (100, 3))
+    fields = ("x", "y", "z")
+    types = (np.float32, np.float32, np.float32)
+
+    viewpoint = (1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0)
+
+    # viewpoint carries over when every PointCloud in the list agrees
+    same_viewpoint_pcs = []
+    for _ in range(3):
+        pc = PointCloud.from_points(in_points, fields, types)
+        pc.metadata.viewpoint = viewpoint
+        same_viewpoint_pcs.append(pc)
+    result = PointCloud.from_list(same_viewpoint_pcs)
+    assert result.metadata.viewpoint == viewpoint
+    assert result.metadata.height == 1
+
+    # viewpoint resets to the default when any one of them disagrees
+    mixed_viewpoint_pcs = list(same_viewpoint_pcs)
+    mixed_viewpoint_pcs.append(PointCloud.from_points(in_points, fields, types))
+    result = PointCloud.from_list(mixed_viewpoint_pcs)
+    assert result.metadata.viewpoint == (0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+
 
 if __name__ == "__main__":
     print("Testing PointCloud msg functionality...")
