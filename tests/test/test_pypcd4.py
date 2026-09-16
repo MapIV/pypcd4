@@ -921,6 +921,17 @@ def test_pointcloud_concatenation_metadata():
     assert result.metadata.height == 1
 
 
+def test_pointcloud_concatenation_with_multi_count_fields(xyzintensity_ascii_multi_count_path):
+    pc = PointCloud.from_path(xyzintensity_ascii_multi_count_path)
+
+    result = pc + pc
+    assert result.points == pc.points * 2
+    assert result.fields == pc.fields
+    assert result.metadata.count == pc.metadata.count
+    assert np.array_equal(result.pc_data[: pc.points], pc.pc_data)
+    assert np.array_equal(result.pc_data[pc.points :], pc.pc_data)
+
+
 def test_pointcloud_getitem_with_slice():
     in_points = np.random.randint(0, 1000, (100, 3))
     fields = ("x", "y", "z")
@@ -1014,6 +1025,27 @@ def test_pointcloud_getitem_metadata():
     assert selected.metadata.data == pc.metadata.data
     assert selected.metadata.height == pc.metadata.height
     assert selected.points == pc.points
+
+
+def test_pointcloud_getitem_with_multi_count_fields(xyzintensity_ascii_multi_count_path):
+    pc = PointCloud.from_path(xyzintensity_ascii_multi_count_path)
+
+    sliced = pc[0:4]
+    assert sliced.points == 4
+    assert sliced.fields == pc.fields
+    assert np.array_equal(sliced.pc_data, pc.pc_data[0:4])
+
+    mask = np.ones(pc.points, dtype=bool)
+    masked = pc[mask]
+    assert masked.points == pc.points
+    assert np.array_equal(masked.pc_data, pc.pc_data)
+
+    # Select one of the expanded sub-fields of the multi-count "intensity" field
+    selected = pc[("x", "intensity__0000")]
+    assert selected.fields == ("x", "intensity__0000")
+    assert selected.points == pc.points
+    assert np.array_equal(selected.pc_data["x"], pc.pc_data["x"])
+    assert np.array_equal(selected.pc_data["intensity__0000"], pc.pc_data["intensity__0000"])
 
 
 def test_from_msg_with_multi_count_fields():
@@ -1124,6 +1156,17 @@ def test_from_list_metadata():
     mixed_viewpoint_pcs.append(PointCloud.from_points(in_points, fields, types))
     result = PointCloud.from_list(mixed_viewpoint_pcs)
     assert result.metadata.viewpoint == (0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+
+
+def test_from_list_with_multi_count_fields(xyzintensity_ascii_multi_count_path):
+    pc = PointCloud.from_path(xyzintensity_ascii_multi_count_path)
+
+    result = PointCloud.from_list([pc, pc])
+    assert result.points == pc.points * 2
+    assert result.fields == pc.fields
+    assert result.metadata.count == pc.metadata.count
+    assert np.array_equal(result.pc_data[: pc.points], pc.pc_data)
+    assert np.array_equal(result.pc_data[pc.points :], pc.pc_data)
 
 
 if __name__ == "__main__":
