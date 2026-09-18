@@ -28,6 +28,7 @@ PathLike = Union[str, Path]
 
 MetaDataVersion = Literal[".7", "0.7"]
 MetaDataViewPoint = Tuple[float, float, float, float, float, float, float]
+DEFAULT_VIEWPOINT: MetaDataViewPoint = (0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
 
 NUMPY_TYPE_TO_PCD_TYPE: dict[
     npt.DTypeLike,
@@ -80,7 +81,7 @@ class MetaData(BaseModel):
     width: NonNegativeInt
     height: NonNegativeInt = 1
     version: MetaDataVersion = "0.7"
-    viewpoint: MetaDataViewPoint = (0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+    viewpoint: MetaDataViewPoint = DEFAULT_VIEWPOINT
     data: Encoding = Encoding.BINARY_COMPRESSED
 
     @staticmethod
@@ -167,6 +168,22 @@ class MetaData(BaseModel):
 
         return np.dtype([x for x in zip(field_names, np_types)])
 
+    def derive(self, **overrides: object) -> MetaData:
+        """Returns a copy of this MetaData with only the given fields overridden
+
+        Every field not named in `overrides` is carried over unchanged from
+        this instance, instead of falling back to MetaData's own defaults
+        (which is what happens when building a MetaData from scratch, e.g.
+        via `_validate_metadata`). Use this when deriving one PointCloud
+        from another -- concatenating, filtering, selecting fields -- so
+        metadata like `viewpoint` isn't silently lost in the process.
+        """
+
+        try:
+            return self.model_copy(update=overrides)
+        except AttributeError:
+            return self.copy(update=overrides)
+
 
 def _dtype_names(dtype: np.dtype) -> Tuple[str, ...]:
     # `dtype.names` is None for non-structured dtypes, but every dtype this
@@ -174,6 +191,17 @@ def _dtype_names(dtype: np.dtype) -> Tuple[str, ...]:
     # is structured, so this always holds.
     assert dtype.names is not None
     return dtype.names
+
+
+def _merge_viewpoints(viewpoints: Sequence[MetaDataViewPoint]) -> MetaDataViewPoint:
+    # A combined point cloud only has one meaningful viewpoint if every
+    # source agreed on it in the first place -- there's no way to average
+    # or otherwise reconcile acquisition poses that actually differ.
+    first, *rest = viewpoints
+    if all(viewpoint == first for viewpoint in rest):
+        return first
+
+    return DEFAULT_VIEWPOINT
 
 
 def _validate_metadata(data: dict) -> MetaData:
@@ -558,11 +586,34 @@ class PointCloud:
 
     @staticmethod
     def from_list(pcs: List[PointCloud]) -> PointCloud:
+        """Concatenates a list of point clouds together
+
+        The result is always unorganized (height=1), since concatenation
+        doesn't in general preserve a valid 2D grid structure. `viewpoint`
+        carries over if every point cloud in `pcs` agrees on it, and resets
+        to the default otherwise -- there's no way to combine different
+        acquisition poses into one.
+
+        Args:
+            pcs (List[PointCloud]): Point clouds to concatenate
+
+        Returns:
+            PointCloud: Concatenated point cloud
+        """
+
         if not all(pc.fields == pcs[0].fields and pc.types == pcs[0].types for pc in pcs):
             raise ValueError("from_list: All PointClouds must have the same fields and types")
-        return PointCloud.from_points(
-            np.concatenate([pc.numpy() for pc in pcs]), pcs[0].fields, pcs[0].types
+
+        points = sum(pc.points for pc in pcs)
+        metadata = pcs[0].metadata.derive(
+            points=points,
+            width=points,
+            height=1,
+            viewpoint=_merge_viewpoints([pc.metadata.viewpoint for pc in pcs]),
+            data=Encoding.BINARY_COMPRESSED,
         )
+
+        return PointCloud(metadata, np.concatenate([pc.pc_data for pc in pcs]))
 
     @staticmethod
     def from_msg(msg: sensor_msgs__msg__PointCloud2) -> PointCloud:
@@ -959,6 +1010,12 @@ class PointCloud:
     def __add__(self, other: PointCloud) -> PointCloud:
         """Concatenates two point clouds together
 
+        The result is always unorganized (height=1), since concatenation
+        doesn't in general preserve a valid 2D grid structure. `viewpoint`
+        carries over if both point clouds agree on it, and resets to the
+        default otherwise -- there's no way to combine two different
+        acquisition poses into one.
+
         Args:
             other (PointCloud): Point cloud to concatenate with
 
@@ -987,16 +1044,29 @@ class PointCloud:
                 f"({self.types} vs. {other.types})"
             )
 
-        concatenated_pc = PointCloud.from_points(
-            np.vstack((self.numpy(), other.numpy())), self.fields, self.types
+        points = self.points + other.points
+        metadata = self.metadata.derive(
+            points=points,
+            width=points,
+            height=1,
+            viewpoint=_merge_viewpoints([self.metadata.viewpoint, other.metadata.viewpoint]),
+            data=Encoding.BINARY_COMPRESSED,
         )
 
-        return concatenated_pc
+        return PointCloud(metadata, np.concatenate([self.pc_data, other.pc_data]))
 
     def __getitem__(
         self, subscript: Union[slice, str, list[str], tuple[str, ...], npt.NDArray[np.bool_]]
     ) -> PointCloud:
         """Returns a point cloud with only the points that match the subscript
+
+        A slice or boolean mask selects a subset of points from the same
+        scan, so `viewpoint` and the encoding always carry over unchanged;
+        `height` resets to 1 since an arbitrary subset of points isn't
+        guaranteed to form a valid 2D grid. Selecting by field name doesn't
+        touch which points exist, so every metadata field other than
+        `fields`/`size`/`type`/`count` carries over unchanged, `height`
+        included.
 
         Args:
             subscript (Union[slice, npt.NDArray[np.bool_]]): Subscript to match.
@@ -1029,20 +1099,16 @@ class PointCloud:
         )
         """
 
-        fields = self.fields
-        types = self.types
         if isinstance(subscript, slice):
-            points_list = tuple(
-                self.pc_data[field][subscript] for field in _dtype_names(self.pc_data.dtype)
-            )
+            pc_data = self.pc_data[subscript]
+            metadata = self.metadata.derive(points=len(pc_data), width=len(pc_data), height=1)
         elif isinstance(subscript, np.ndarray):
             mask = subscript.squeeze()
             if mask.ndim != 1:
                 raise ValueError(f"Mask array must be 1-dimensional but got {mask.ndim}")
 
-            points_list = tuple(
-                self.pc_data[field][mask] for field in _dtype_names(self.pc_data.dtype)
-            )
+            pc_data = self.pc_data[mask]
+            metadata = self.metadata.derive(points=len(pc_data), width=len(pc_data), height=1)
         elif isinstance(subscript, str) or all(isinstance(s, str) for s in cast(tuple, subscript)):
             if isinstance(subscript, str):
                 subscript = (subscript,)
@@ -1052,13 +1118,19 @@ class PointCloud:
             if not np.isin(subscript, self.fields).all():
                 raise ValueError(f"Invalid field name(s): {subscript}")
 
-            points_list = tuple(self.pc_data[field] for field in subscript)
-            fields = tuple(subscript)
-            types = tuple(self.pc_data[field].dtype for field in subscript)
+            selected_types = [self.pc_data[field].dtype for field in subscript]
+            pcd_types_and_sizes = [NUMPY_TYPE_TO_PCD_TYPE[dt] for dt in selected_types]
+            metadata = self.metadata.derive(
+                fields=subscript,
+                size=tuple(size for _, size in pcd_types_and_sizes),
+                type=tuple(pcd_type for pcd_type, _ in pcd_types_and_sizes),
+                count=(1,) * len(subscript),
+            )
+            pc_data = _compose_pc_data(tuple(self.pc_data[field] for field in subscript), metadata)
         else:
             raise ValueError(f"Invalid subscript type: {type(subscript).__name__}")
 
-        return PointCloud.from_points(points_list, fields, types)
+        return PointCloud(metadata, pc_data)
 
     def __str__(self) -> str:
         return f"PointCloud({self.metadata})"
