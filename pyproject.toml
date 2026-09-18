@@ -49,7 +49,11 @@ dev = [
     "tox-uv>=1.36.0; python_version >= '3.10'",
     "pytest-cov>=4.1.0",
     "ruff>=0.3.4",
+    "lzf-stubs",
 ]
+
+[tool.uv.sources]
+lzf-stubs = { path = "stubs", editable = true }
 
 [tool.hatch.metadata]
 allow-direct-references = true

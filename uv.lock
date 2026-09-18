@@ -656,6 +656,11 @@ wheels = [
 ]
 
 [[package]]
+name = "lzf-stubs"
+version = "0.0.1"
+source = { editable = "stubs" }
+
+[[package]]
 name = "mypy"
 version = "1.14.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1538,6 +1543,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "lzf-stubs" },
     { name = "mypy", version = "1.14.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
     { name = "mypy", version = "1.19.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
     { name = "mypy", version = "1.20.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
@@ -1567,6 +1573,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "lzf-stubs", editable = "stubs" },
     { name = "mypy", specifier = ">=1.5.1" },
     { name = "pre-commit", specifier = ">=3.4.0" },
     { name = "pytest", specifier = ">=7.4.1" },
