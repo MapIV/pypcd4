@@ -40,7 +40,7 @@ jobs:
             "https://api.github.com/repos/mapiv/pypcd4/contributors?page=${page}&per_page=100")"
           count="$(jq 'length' <<<"$response")"
           [ "$count" -eq 0 ] && break
-          jq -r '.[] | "* [" + .login + "](" + .html_url + ")"' <<<"$response" >>"$tmp"
+          jq -r '.[] | select(.type != "Bot") | "* [" + .login + "](" + .html_url + ")"' <<<"$response" >>"$tmp"
           page=$((page + 1))
         done
 
