@@ -934,3 +934,37 @@ def test_pointcloud_getitem_with_field_names():
     # Cannot filter by fields names since the field name "a" is invalid
     with pytest.raises(ValueError):
         pc[("x", "y", "a")]
+
+
+def test_transform():
+    in_points = np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=np.float32)
+    fields = ("x", "y", "z")
+    types = (np.float32, np.float32, np.float32)
+    pc = PointCloud.from_points(in_points, fields, types)
+
+    # A translation matrix moves every point by the same offset
+    translation = np.array(
+        [
+            [1.0, 0.0, 0.0, 10.0],
+            [0.0, 1.0, 0.0, 20.0],
+            [0.0, 0.0, 1.0, 30.0],
+            [0.0, 0.0, 0.0, 1.0],
+        ]
+    )
+    pc2 = pc.transform(translation)
+    assert isinstance(pc2, PointCloud)
+    assert pc2.fields == pc.fields
+    assert pc2.types == pc.types
+    assert pc2.points == pc.points
+    assert np.allclose(pc2.numpy(), in_points + np.array([10.0, 20.0, 30.0]))
+
+    # transform() must not modify the original point cloud
+    assert np.allclose(pc.numpy(), in_points)
+
+    # An identity matrix leaves the points unchanged
+    pc3 = pc.transform(np.eye(4))
+    assert np.allclose(pc3.numpy(), in_points)
+
+    # The transformation matrix must be 4x4
+    with pytest.raises(ValueError):
+        pc.transform(np.eye(3))
